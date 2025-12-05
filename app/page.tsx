@@ -9,7 +9,7 @@ export default function Home() {
           Blue SaaS Theme ✅
         </h1>
 
-        <p className="text-muted mb-6 text-sm">
+        <p className="text- mb-6 text-sm">
           If this card looks premium dark-blue with a glowing CTA button,
           your global theme is working perfectly.
         </p>

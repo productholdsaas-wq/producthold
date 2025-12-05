@@ -25,12 +25,74 @@ export const Users = pgTable('users', {
 
 
 
-export const TopviewVideo = pgTable("topviewVideos", {
+// TopView workflow tracking - tracks each step in the video generation process
+export const TopviewTasks = pgTable("topview_tasks", {
   id: uuid("id").primaryKey().defaultRandom(),
+  userId: varchar("user_id").notNull(), // Clerk user ID
+  
+  // Step 1: Background Removal
+  productImageFileId: varchar("product_image_file_id"),
+  bgRemovalTaskId: varchar("bg_removal_task_id"),
+  bgRemovedImageFileId: varchar("bg_removed_image_file_id"),
+  bgRemovedImageUrl: varchar("bg_removed_image_url"),
+  
+  // Step 2: Image Replacement
+  templateImageFileId: varchar("template_image_file_id"),
+  avatarId: varchar("avatar_id"), // Optional: use saved avatar instead of template
+  replaceProductTaskId: varchar("replace_product_task_id"),
+  generateImageMode: varchar("generate_image_mode"), // "auto" or "manual"
+  imageEditPrompt: varchar("image_edit_prompt", { length: 1000 }),
+  location: json("location"), // Manual mode coordinates
+  replaceProductResults: json("replace_product_results"), // Array of generated images
+  selectedImageId: varchar("selected_image_id"), // User's chosen image from results
+  
+  // Step 3: Video Generation
+  videoTaskId: varchar("video_task_id"),
+  script: varchar("script", { length: 5000 }),
+  voiceId: varchar("voice_id"),
+  captionStyleId: varchar("caption_style_id"),
+  mode: varchar("mode"), // "pro" or "standard"
+  finishedVideoUrl: varchar("finished_video_url"),
+  
+  // Overall status tracking
+  currentStep: integer("current_step").default(1), // 1, 2, or 3
+  status: varchar("status").default("in_progress"), // in_progress, completed, failed
+  errorMessage: varchar("error_message", { length: 1000 }),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// TopView AI Avatars - stores reusable avatars created from successful videos
+export const TopviewAvatars = pgTable("topview_avatars", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: varchar("user_id").notNull(),
+  
+  // Avatar metadata from TopView API
+  aiavatarId: varchar("aiavatar_id").notNull().unique(),
+  aiavatarName: varchar("aiavatar_name").notNull(),
+  gender: varchar("gender"),
+  coverUrl: varchar("cover_url"),
+  previewVideoUrl: varchar("preview_video_url"),
+  ethnicities: varchar("ethnicities"),
+  voiceoverIdDefault: varchar("voiceover_id_default"),
+  faceSquareConfig: json("face_square_config"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Updated TopView Video table with user tracking
+export const TopviewVideo = pgTable("topview_videos", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: varchar("user_id").notNull(), // Clerk user ID
+  taskTableId: uuid("task_table_id"), // Reference to TopviewTasks
+  
   avatarId: varchar("avatar_id"),
   avatarMeta: json("avatar_meta"),
   productUrl: varchar("product_url"),
   productName: varchar("product_name"),
+  productImageUrl: varchar("product_image_url"),
+  
   fileIds: json("file_ids"),
   script: varchar("script", { length: 5000 }),
   voiceId: varchar("voice_id"),
@@ -38,13 +100,17 @@ export const TopviewVideo = pgTable("topviewVideos", {
   captionStyleId: varchar("caption_style_id"),
   aspectRatio: varchar("aspect_ratio"),
   videoLength: varchar("video_length"),
-  taskId: varchar("task_id"),
+  
+  taskId: varchar("task_id"), // Final video generation task ID
   status: varchar("status").default("pending"),
   videoUrl: varchar("video_url"),
   videoCoverUrl: varchar("video_cover_url"),
   duration: varchar("duration"),
-  createdBy: varchar("created_by").notNull(),
+  
+  creditsCost: integer("credits_cost").default(1),
+  creditsDeducted: boolean("credits_deducted").default(false),
+  
+  createdBy: varchar("created_by").notNull(), // Deprecated, use userId
   createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
-
-
