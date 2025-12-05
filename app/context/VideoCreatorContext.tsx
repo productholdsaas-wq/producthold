@@ -7,6 +7,8 @@ type WorkflowStep = 1 | 2 | 3 | 4;
 interface WorkflowData {
   taskRecordId?: string;
   productImageFileId?: string;
+  productName?: string;  // Added for product name
+  scrapedImageFileId?: string;  // Added for scraped images
   bgRemovedImageFileId?: string;
   bgRemovedImageUrl?: string;
   selectedImageId?: string;

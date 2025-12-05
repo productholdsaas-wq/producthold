@@ -136,20 +136,27 @@ export default function Step2TemplateSelection() {
       return;
     }
 
+    console.log("🔍 Selected avatar:", selectedAvatar);
+    console.log("🔍 Avatar ID being sent:", selectedAvatar.aiavatarId);
+
     setProcessing(true);
     setError("");
 
     try {
+      const payload = {
+        taskRecordId,
+        avatarId: selectedAvatar.aiavatarId,
+        generateImageMode: mode,
+        imageEditPrompt:
+          "Replace the item in the hand of the person with the product. Keep composition unchanged.",
+      };
+
+      console.log("📤 Sending payload:", payload);
+
       const response = await fetch("/api/topview/replace-product/submit", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          taskRecordId,
-          avatarId: selectedAvatar.aiavatarId,
-          generateImageMode: mode,
-          imageEditPrompt:
-            "Replace the item in the hand of the person with the product. Keep composition unchanged.",
-        }),
+        body: JSON.stringify(payload),
       });
 
       const data = await response.json();

@@ -21,8 +21,8 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const {
       taskRecordId,
-      templateImageFileId,
       avatarId,
+      templateImageFileId,
       generateImageMode = "auto",
       imageEditPrompt,
       location,
@@ -58,6 +58,8 @@ export async function POST(req: NextRequest) {
     }
 
     console.log("🔄 Submitting image replacement task...");
+    console.log("🔍 Received avatarId from frontend:", avatarId);
+    console.log("🔍 Received templateImageFileId:", templateImageFileId);
 
     if (!TOPVIEW_API_KEY || !TOPVIEW_UID) {
       return NextResponse.json(
@@ -70,6 +72,7 @@ export async function POST(req: NextRequest) {
     const replaceRequest: {
       generateImageMode: "auto" | "manual";
       productImageWithoutBackgroundFileId: string;
+      avatarId?: string;
       templateImageFileId?: string;
       imageEditPrompt?: string;
       location?: number[][];
@@ -77,6 +80,14 @@ export async function POST(req: NextRequest) {
       generateImageMode,
       productImageWithoutBackgroundFileId: taskRecord.bgRemovedImageFileId!,
     };
+
+    // Add avatarId to request if provided
+    if (avatarId) {
+      replaceRequest.avatarId = avatarId;
+      console.log("✅ Added avatarId to TopView request:", avatarId);
+    } else {
+      console.log("⚠️ No avatarId provided!");
+    }
 
     if (templateImageFileId) {
       replaceRequest.templateImageFileId = templateImageFileId;
@@ -91,6 +102,11 @@ export async function POST(req: NextRequest) {
     }
 
     // Submit to TopView using axios
+    console.log("📤 Sending to TopView API:", replaceRequest);
+    console.log("🔑 Using TOPVIEW_UID:", TOPVIEW_UID?.substring(0, 8) + "...");
+    console.log("🔑 API Key present:", !!TOPVIEW_API_KEY);
+    console.log("🌐 API URL:", `${BASE_URL}/v3/product_avatar/task/image_replace/submit`);
+    
     const options = {
       method: "POST",
       url: `${BASE_URL}/v3/product_avatar/task/image_replace/submit`,
@@ -103,8 +119,16 @@ export async function POST(req: NextRequest) {
       data: replaceRequest,
     };
 
+    console.log("📦 Request headers:", {
+      accept: options.headers.accept,
+      "Topview-Uid": options.headers["Topview-Uid"]?.substring(0, 8) + "...",
+      "Authorization": "Bearer " + TOPVIEW_API_KEY?.substring(0, 10) + "...",
+    });
+
     const response = await axios.request(options);
     const data = response.data;
+    
+    console.log("📥 TopView API Response:", data);
 
     if (!["200", 200, "0", 0].includes(data.code)) {
       console.error("❌ Image replacement submission error:", data);
@@ -127,7 +151,7 @@ export async function POST(req: NextRequest) {
       .update(TopviewTasks)
       .set({
         templateImageFileId,
-        avatarId,
+        avatarId: avatarId,
         replaceProductTaskId: result.taskId,
         generateImageMode,
         imageEditPrompt,
