@@ -91,7 +91,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
             </h1>
           </div>
           
-          {/* Credit Display */}
+          {/* Credit Display & User Button */}
           <div className="flex items-center gap-4">
             <div className="px-4 py-2 rounded-lg bg-sidebar-accent border border-border">
               <div className="flex items-center gap-2">
@@ -101,6 +101,18 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                 </span>
               </div>
             </div>
+            
+            <UserButton 
+              appearance={{
+                elements: {
+                  avatarBox: "w-9 h-9",
+                  userButtonPopoverCard: "bg-card border-border",
+                  userButtonPopoverActionButton: "text-foreground hover:bg-sidebar-accent",
+                  userButtonPopoverActionButtonText: "text-foreground",
+                  userButtonPopoverActionButtonIcon: "text-muted-foreground",
+                }
+              }}
+            />
           </div>
         </header>
 

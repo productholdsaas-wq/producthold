@@ -1,28 +1,33 @@
 "use client";
 
-import { useState, useCallback } from "react";
-import { Upload, Loader2, CheckCircle2, Image as ImageIcon } from "lucide-react";
+import { useState, useCallback, useEffect } from "react";
+import { Upload, Loader2, CheckCircle2 } from "lucide-react";
 import { useDropzone } from "react-dropzone";
+import { useVideoCreator } from "../../context/VideoCreatorContext";
 
-interface Step1Props {
-  onComplete: (data: {
-    taskRecordId: string;
-    bgRemovedImageFileId: string;
-    bgRemovedImageUrl: string;
-  }) => void;
-  onError: (error: string) => void;
-}
-
-export default function Step1ProductUpload({ onComplete, onError }: Step1Props) {
+export default function Step1ProductUpload() {
+  const { workflowData, setWorkflowData, nextStep, setError } = useVideoCreator();
+  
   const [uploading, setUploading] = useState(false);
   const [processing, setProcessing] = useState(false);
   const [preview, setPreview] = useState<string | null>(null);
-  const [taskRecordId, setTaskRecordId] = useState<string | null>(null);
+  const [isCompleted, setIsCompleted] = useState(false);
+
+  // Check if we already have completed data
+  useEffect(() => {
+    if (workflowData.bgRemovedImageUrl && workflowData.taskRecordId) {
+      setPreview(workflowData.bgRemovedImageUrl);
+      setIsCompleted(true);
+    }
+  }, [workflowData.bgRemovedImageUrl, workflowData.taskRecordId]);
 
   const onDrop = useCallback(
     async (acceptedFiles: File[]) => {
       const file = acceptedFiles[0];
       if (!file) return;
+
+      // Reset completed state if re-uploading
+      setIsCompleted(false);
 
       // Show preview
       const reader = new FileReader();
@@ -30,7 +35,7 @@ export default function Step1ProductUpload({ onComplete, onError }: Step1Props) 
       reader.readAsDataURL(file);
 
       setUploading(true);
-      onError("");
+      setError(null);
 
       try {
         // Step 1: Get upload credentials from TopView
@@ -79,7 +84,6 @@ export default function Step1ProductUpload({ onComplete, onError }: Step1Props) 
           throw new Error(data.error || "Failed to start background removal");
         }
 
-        setTaskRecordId(data.taskRecordId);
         setUploading(false);
         setProcessing(true);
 
@@ -88,10 +92,10 @@ export default function Step1ProductUpload({ onComplete, onError }: Step1Props) 
       } catch (error) {
         setUploading(false);
         console.error("❌ Upload error:", error);
-        onError(error instanceof Error ? error.message : "Upload failed");
+        setError(error instanceof Error ? error.message : "Upload failed");
       }
     },
-    [onError]
+    [setError]
   );
 
   const pollForCompletion = async (recordId: string) => {
@@ -107,25 +111,36 @@ export default function Step1ProductUpload({ onComplete, onError }: Step1Props) 
 
         if (data.status === "success" && data.bgRemovedImageFileId) {
           setProcessing(false);
-          onComplete({
+          setIsCompleted(true);
+          
+          // Update context with workflow data
+          setWorkflowData({
             taskRecordId: recordId,
             bgRemovedImageFileId: data.bgRemovedImageFileId,
             bgRemovedImageUrl: data.bgRemovedImageUrl,
           });
+
+          setPreview(data.bgRemovedImageUrl);
         } else if (attempts < maxAttempts) {
           attempts++;
           setTimeout(poll, 2000); // Poll every 2 seconds
         } else {
           setProcessing(false);
-          onError("Background removal timed out. Please try again.");
+          setError("Background removal timed out. Please try again.");
         }
       } catch (error) {
         setProcessing(false);
-        onError("Failed to check status. Please try again.");
+        setError("Failed to check status. Please try again.");
       }
     };
 
     poll();
+  };
+
+  const handleNext = () => {
+    if (isCompleted) {
+      nextStep();
+    }
   };
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -196,9 +211,27 @@ export default function Step1ProductUpload({ onComplete, onError }: Step1Props) 
                 <span className="font-medium">Removing background...</span>
               </div>
             )}
+            {isCompleted && (
+              <div className="flex items-center justify-center gap-2 text-green-500 animate-celebration">
+                <CheckCircle2 className="w-5 h-5" />
+                <span className="font-medium">Background removed successfully!</span>
+              </div>
+            )}
           </div>
         )}
       </div>
+
+      {/* Next Button */}
+      {isCompleted && (
+        <div className="flex justify-end mt-6">
+          <button
+            onClick={handleNext}
+            className="px-6 py-3 bg-brand-primary text-white rounded-lg font-semibold hover:bg-brand-primary/90 transition-all animate-fade-in"
+          >
+          Continue to Choose Avatar
+          </button>
+        </div>
+      )}
 
       {/* Info */}
       <div className="mt-6 p-4 bg-sidebar border border-sidebar-border rounded-lg">
@@ -207,6 +240,41 @@ export default function Step1ProductUpload({ onComplete, onError }: Step1Props) 
           with good lighting and minimal background clutter.
         </p>
       </div>
+      
+      <style>{`
+        @keyframes celebration {
+          0% {
+            transform: scale(0.8);
+            opacity: 0;
+          }
+          50% {
+            transform: scale(1.1);
+          }
+          100% {
+            transform: scale(1);
+            opacity: 1;
+          }
+        }
+        
+        @keyframes fadeIn {
+          from {
+            opacity: 0;
+            transform: translateY(10px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        
+        .animate-celebration {
+          animation: celebration 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        
+        .animate-fade-in {
+          animation: fadeIn 0.5s ease-out 0.3s both;
+        }
+      `}</style>
     </div>
   );
 }

@@ -1,29 +1,14 @@
 "use client";
 
-import { useState } from "react";
-import { CheckCircle2, Circle } from "lucide-react";
+import { VideoCreatorProvider, useVideoCreator } from "../../context/VideoCreatorContext";
+import { CheckCircle2 } from "lucide-react";
 import Step1ProductUpload from "./Step1ProductUpload";
 import Step2TemplateSelection from "./Step2TemplateSelection";
 import Step3VideoGeneration from "./Step3VideoGeneration";
 import VideoResult from "./VideoResult";
 
-type WorkflowStep = 1 | 2 | 3 | 4;
-
-interface WorkflowData {
-  taskRecordId?: string;
-  productImageFileId?: string;
-  bgRemovedImageFileId?: string;
-  bgRemovedImageUrl?: string;
-  selectedImageId?: string;
-  selectedImageUrl?: string;
-  videoRecordId?: string;
-  finishedVideoUrl?: string;
-}
-
-export default function VideoCreator() {
-  const [currentStep, setCurrentStep] = useState<WorkflowStep>(1);
-  const [workflowData, setWorkflowData] = useState<WorkflowData>({});
-  const [error, setError] = useState<string | null>(null);
+function VideoCreatorContent() {
+  const { currentStep, error } = useVideoCreator();
 
   const steps = [
     { number: 1, title: "Upload Product", description: "Remove background" },
@@ -31,44 +16,6 @@ export default function VideoCreator() {
     { number: 3, title: "Generate Video", description: "Add script & voice" },
     { number: 4, title: "Download", description: "Video ready" },
   ];
-
-  const handleStep1Complete = (data: {
-    taskRecordId: string;
-    bgRemovedImageFileId: string;
-    bgRemovedImageUrl: string;
-  }) => {
-    setWorkflowData((prev) => ({ ...prev, ...data }));
-    setCurrentStep(2);
-    setError(null);
-  };
-
-  const handleStep2Complete = (data: {
-    selectedImageId: string;
-    selectedImageUrl: string;
-  }) => {
-    setWorkflowData((prev) => ({ ...prev, ...data }));
-    setCurrentStep(3);
-    setError(null);
-  };
-
-  const handleStep3Complete = (data: {
-    videoRecordId: string;
-    finishedVideoUrl: string;
-  }) => {
-    setWorkflowData((prev) => ({ ...prev, ...data }));
-    setCurrentStep(4);
-    setError(null);
-  };
-
-  const handleError = (errorMsg: string) => {
-    setError(errorMsg);
-  };
-
-  const handleReset = () => {
-    setCurrentStep(1);
-    setWorkflowData({});
-    setError(null);
-  };
 
   return (
     <div className="max-w-6xl mx-auto space-y-8">
@@ -145,41 +92,19 @@ export default function VideoCreator() {
 
       {/* Step Content */}
       <div className="min-h-[500px]">
-        {currentStep === 1 && (
-          <Step1ProductUpload
-            onComplete={handleStep1Complete}
-            onError={handleError}
-          />
-        )}
-
-        {currentStep === 2 && (
-          <Step2TemplateSelection
-            taskRecordId={workflowData.taskRecordId!}
-            bgRemovedImageUrl={workflowData.bgRemovedImageUrl!}
-            onComplete={handleStep2Complete}
-            onError={handleError}
-            onBack={() => setCurrentStep(1)}
-          />
-        )}
-
-        {currentStep === 3 && (
-          <Step3VideoGeneration
-            taskRecordId={workflowData.taskRecordId!}
-            selectedImageId={workflowData.selectedImageId!}
-            selectedImageUrl={workflowData.selectedImageUrl!}
-            onComplete={handleStep3Complete}
-            onError={handleError}
-            onBack={() => setCurrentStep(2)}
-          />
-        )}
-
-        {currentStep === 4 && workflowData.finishedVideoUrl && (
-          <VideoResult
-            videoUrl={workflowData.finishedVideoUrl}
-            onCreateAnother={handleReset}
-          />
-        )}
+        {currentStep === 1 && <Step1ProductUpload />}
+        {currentStep === 2 && <Step2TemplateSelection />}
+        {currentStep === 3 && <Step3VideoGeneration />}
+        {currentStep === 4 && <VideoResult />}
       </div>
     </div>
+  );
+}
+
+export default function VideoCreator() {
+  return (
+    <VideoCreatorProvider>
+      <VideoCreatorContent />
+    </VideoCreatorProvider>
   );
 }

@@ -3,14 +3,13 @@
 import { useState } from "react";
 import { Download, Share2, Video, Sparkles, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
+import { useVideoCreator } from "../../context/VideoCreatorContext";
 
-interface VideoResultProps {
-  videoUrl: string;
-  onCreateAnother: () => void;
-}
-
-export default function VideoResult({ videoUrl, onCreateAnother }: VideoResultProps) {
+export default function VideoResult() {
+  const { workflowData, resetWorkflow } = useVideoCreator();
   const [downloading, setDownloading] = useState(false);
+  
+  const videoUrl = workflowData.finishedVideoUrl!;
 
   const handleDownload = async () => {
     setDownloading(true);
@@ -87,7 +86,7 @@ export default function VideoResult({ videoUrl, onCreateAnother }: VideoResultPr
         </button>
 
         <button
-          onClick={onCreateAnother}
+          onClick={resetWorkflow}
           className="flex items-center justify-center gap-2 px-6 py-3 bg-sidebar border border-border text-foreground rounded-lg font-semibold hover:border-brand-primary/50 transition-all"
         >
           <RotateCcw className="w-5 h-5" />

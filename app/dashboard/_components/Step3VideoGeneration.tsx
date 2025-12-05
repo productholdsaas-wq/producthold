@@ -2,15 +2,7 @@
 
 import { useState } from "react";
 import { ChevronLeft, Loader2, Sparkles } from "lucide-react";
-
-interface Step3Props {
-  taskRecordId: string;
-  selectedImageId: string;
-  selectedImageUrl: string;
-  onComplete: (data: { videoRecordId: string; finishedVideoUrl: string }) => void;
-  onError: (error: string) => void;
-  onBack: () => void;
-}
+import { useVideoCreator } from "../../context/VideoCreatorContext";
 
 // Mock voices - in production, fetch from TopView
 const mockVoices = [
@@ -19,14 +11,13 @@ const mockVoices = [
   { id: "voice3", name: "Emma - Australian Female", accent: "AU" },
 ];
 
-export default function Step3VideoGeneration({
-  taskRecordId,
-  selectedImageId,
-  selectedImageUrl,
-  onComplete,
-  onError,
-  onBack,
-}: Step3Props) {
+export default function Step3VideoGeneration() {
+  const { workflowData, setWorkflowData, previousStep, nextStep, setError } = useVideoCreator();
+  
+  const taskRecordId = workflowData.taskRecordId!;
+  const selectedImageId = workflowData.selectedImageId!;
+  const selectedImageUrl = workflowData.selectedImageUrl!;
+  
   const [script, setScript] = useState("");
   const [selectedVoice, setSelectedVoice] = useState(mockVoices[0].id);
   const [mode, setMode] = useState<"pro" | "standard">("pro");
@@ -35,17 +26,17 @@ export default function Step3VideoGeneration({
 
   const handleSubmit = async () => {
     if (!script.trim()) {
-      onError("Please enter a script");
+      setError("Please enter a script");
       return;
     }
 
     if (script.length < 10) {
-      onError("Script must be at least 10 characters");
+      setError("Script must be at least 10 characters");
       return;
     }
 
     setProcessing(true);
-    onError("");
+    setError(null);
 
     try {
       const response = await fetch("/api/topview/generate-video/submit", {
@@ -75,7 +66,7 @@ export default function Step3VideoGeneration({
       pollForVideo(data.videoRecordId);
     } catch (error) {
       setProcessing(false);
-      onError(error instanceof Error ? error.message : "Failed to generate video");
+      setError(error instanceof Error ? error.message : "Failed to generate video");
     }
   };
 
@@ -92,20 +83,24 @@ export default function Step3VideoGeneration({
 
         if (data.status === "success" && data.finishedVideoUrl) {
           setProcessing(false);
-          onComplete({
+          
+          // Update workflow data with video result
+          setWorkflowData({
             videoRecordId: recordId,
             finishedVideoUrl: data.finishedVideoUrl,
           });
+          
+          nextStep();
         } else if (attempts < maxAttempts) {
           attempts++;
           setTimeout(poll, 2000);
         } else {
           setProcessing(false);
-          onError("Video generation timed out. Please try again.");
+          setError("Video generation timed out. Please try again.");
         }
       } catch (error) {
         setProcessing(false);
-        onError("Failed to check video status.");
+        setError("Failed to check video status.");
       }
     };
 
@@ -116,7 +111,7 @@ export default function Step3VideoGeneration({
     <div className="bg-card border border-border rounded-xl p-8">
       <div className="flex items-center gap-4 mb-6">
         <button
-          onClick={onBack}
+          onClick={previousStep}
           className="p-2 hover:bg-sidebar-accent rounded-lg transition-colors"
           disabled={processing}
         >
