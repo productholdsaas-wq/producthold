@@ -18,33 +18,25 @@ interface ReplaceProductResult {
   url: string;
 }
 
-interface Ethnicity {
+interface AvatarEthnicity {
   ethnicityId: string;
   ethnicityName: string;
 }
 
-interface FaceSquareConfig {
-  y_f: number;
-  w: number;
-  h: number;
-  x: number;
-  y: number;
-  h_f: number;
-  x_f: number;
-  w_f: number;
+interface AvatarCategory {
+  categoryId: string;
+  categoryName: string;
 }
 
 interface Avatar {
-  aiavatarId: string;
-  aiavatarName: string;
-  gender?: string;
-  coverUrl?: string;
-  previewVideoUrl?: string;
-  previewImageUrl?: string;
-  ethnicities?: Ethnicity[];
-  voiceoverIdDefault?: string;
-  faceSquareConfig?: FaceSquareConfig;
-  type?: number;
+  avatarId: string;
+  avatarImagePath: string;
+  voiceoverId: string;
+  gender: string;
+  avatarCategoryList: AvatarCategory[];
+  objectMaskImageInfo: string;
+  avatarEthnicityList: AvatarEthnicity[];
+  minSubsType: string;
 }
 
 export default function Step2TemplateSelection() {
@@ -137,7 +129,7 @@ export default function Step2TemplateSelection() {
     }
 
     console.log("🔍 Selected avatar:", selectedAvatar);
-    console.log("🔍 Avatar ID being sent:", selectedAvatar.aiavatarId);
+    console.log("🔍 Avatar ID being sent:", selectedAvatar.avatarId);
 
     setProcessing(true);
     setError("");
@@ -145,10 +137,11 @@ export default function Step2TemplateSelection() {
     try {
       const payload = {
         taskRecordId,
-        avatarId: selectedAvatar.aiavatarId,
+        productImageWithoutBackgroundFileId: workflowData.bgRemovedImageFileId!,
+        avatarId: selectedAvatar.avatarId,
         generateImageMode: mode,
         imageEditPrompt:
-          "Replace the item in the hand of the person with the product. Keep composition unchanged.",
+          "Replace the item in the hand of the person in Picture 1 with the one in Picture 2. Keep the composition position and gesture of the person in Picture 1 unchanged, and ensure that the features, appearance and details of the item in Picture 2 remain exactly the same after the change.",
       };
 
       console.log("📤 Sending payload:", payload);
@@ -165,36 +158,62 @@ export default function Step2TemplateSelection() {
         throw new Error(data.error || "Failed to start image replacement");
       }
 
-      // Poll for results
-      pollForResults(taskRecordId);
+      console.log("✅ Submit successful, taskId:", data.taskId);
+
+      // Poll for results using the TopView taskId
+      pollForResults(data.taskId);
     } catch (error) {
       setProcessing(false);
       setError(error instanceof Error ? error.message : "Failed to process");
     }
   };
 
-  const pollForResults = async (recordId: string) => {
-    const maxAttempts = 60;
+  const pollForResults = async (taskId: string) => {
+    const maxAttempts = 200;
     let attempts = 0;
 
     const poll = async () => {
       try {
         const response = await fetch(
-          `/api/topview/replace-product/status?taskRecordId=${recordId}`
+          `/api/topview/replace-product/status?taskId=${taskId}`
         );
         const data = await response.json();
 
+        console.log(`🔍 Poll attempt ${attempts + 1}/${maxAttempts}:`, data);
+        console.log(`  Status: ${data.status}`);
+        console.log(`  Has replaceProductResult: ${!!data.replaceProductResult}`);
+
         if (data.status === "success" && data.replaceProductResult) {
+          console.log("✅ Image replacement completed successfully!");
           setProcessing(false);
           setResults(data.replaceProductResult);
+        } else if (data.status === "failed" || data.status === "error") {
+          console.error("❌ Image replacement failed:", data);
+          setProcessing(false);
+          setError(data.message || data.errorMsg || "Image replacement failed. Please try again.");
+        } else if (data.status === "running" || data.status === "processing" || data.status === "pending") {
+          // Task is still processing
+          console.log(`⏳ Task still ${data.status}, continuing to poll...`);
+          if (attempts < maxAttempts) {
+            attempts++;
+            setTimeout(poll, 2000);
+          } else {
+            console.error("⏰ Polling timeout after", maxAttempts, "attempts");
+            setProcessing(false);
+            setError("Image replacement timed out. Please try again.");
+          }
         } else if (attempts < maxAttempts) {
+          // Unknown status, continue polling
+          console.warn(`⚠️ Unknown status '${data.status}', continuing to poll...`);
           attempts++;
           setTimeout(poll, 2000);
         } else {
+          console.error("⏰ Polling timeout - status:", data.status);
           setProcessing(false);
           setError("Image replacement timed out. Please try again.");
         }
-      } catch {
+      } catch (error) {
+        console.error("❌ Polling error:", error);
         setProcessing(false);
         setError("Failed to check status.");
       }
@@ -360,32 +379,57 @@ export default function Step2TemplateSelection() {
                     <div className="shimmer" />
                   </div>
                 ))
-                : currentAvatars.map((avatar) => (
-                  <div
-                    key={avatar.aiavatarId}
-                    className={`relative group cursor-pointer rounded-xl overflow-hidden border-2 transition-all duration-200 h-[260px]
-                        ${selectedAvatar?.aiavatarId === avatar.aiavatarId
-                        ? "border-brand-primary shadow-lg shadow-brand-primary/20 scale-105"
-                        : "border-transparent hover:border-brand-primary/50 hover:shadow-md"
-                      }`}
-                    onClick={() => setSelectedAvatar(avatar)}
-                  >
-                    <img
-                      src={avatar.coverUrl || avatar.previewImageUrl || ""}
-                      alt={avatar.aiavatarName}
-                      className="absolute inset-0 w-full h-full object-cover"
-                    />
-
-                    <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/80 to-transparent">
-                      <p className="text-white text-sm font-medium truncate">
-                        {avatar.aiavatarName}
+                : currentAvatars.length === 0
+                  ? (
+                    <div className="col-span-full flex flex-col items-center justify-center py-16 px-4 text-center">
+                      <div className="w-16 h-16 rounded-full bg-muted/20 flex items-center justify-center mb-4">
+                        <svg className="w-8 h-8 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+                        </svg>
+                      </div>
+                      <h3 className="text-lg font-semibold text-foreground mb-2">No Avatars Found</h3>
+                      <p className="text-sm text-muted-foreground max-w-md">
+                        {selectedGender !== "all" || selectedEthnicity !== "all"
+                          ? "No avatars match your current filters. Try adjusting your selection."
+                          : "No avatars are currently available. Please try again later."}
                       </p>
-                      {avatar.gender && (
-                        <p className="text-white/70 text-xs">{avatar.gender}</p>
+                      {(selectedGender !== "all" || selectedEthnicity !== "all") && (
+                        <button
+                          onClick={() => {
+                            setSelectedGender("all");
+                            setSelectedEthnicity("all");
+                            fetchFilteredAvatars("all", "all");
+                          }}
+                          className="mt-4 px-4 py-2 text-sm bg-brand-primary text-white rounded-lg hover:bg-brand-primary-light transition"
+                        >
+                          Clear Filters
+                        </button>
                       )}
                     </div>
-                  </div>
-                ))}
+                  )
+                  : currentAvatars.map((avatar) => (
+                    <div
+                      key={avatar.avatarId}
+                      className={`relative group cursor-pointer rounded-xl overflow-hidden border-2 transition-all duration-200 h-[260px]
+                        ${selectedAvatar?.avatarId === avatar.avatarId
+                          ? "border-brand-primary shadow-lg shadow-brand-primary/20 scale-105"
+                          : "border-transparent hover:border-brand-primary/50 hover:shadow-md"
+                        }`}
+                      onClick={() => setSelectedAvatar(avatar)}
+                    >
+                      <img
+                        src={avatar.avatarImagePath}
+                        alt={`Avatar ${avatar.avatarId}`}
+                        className="absolute inset-0 w-full h-full object-cover"
+                      />
+
+                      <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/80 to-transparent">
+                        <p className="text-white text-sm font-medium truncate">
+                          {avatar.avatarCategoryList[0]?.categoryName || 'Avatar'}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
             </div>
           </div>
 

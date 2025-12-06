@@ -2,9 +2,6 @@ export const runtime = "nodejs";
 
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
-import { db } from "@/lib/db";
-import { TopviewTasks } from "@/configs/schema";
-import { eq } from "drizzle-orm";
 import axios, { AxiosError } from "axios";
 
 const TOPVIEW_API_KEY = process.env.TOPVIEW_API_KEY!;
@@ -19,38 +16,17 @@ export async function GET(req: NextRequest) {
     }
 
     const { searchParams } = new URL(req.url);
-    const taskRecordId = searchParams.get("taskRecordId");
+    const taskId = searchParams.get("taskId");
 
-    if (!taskRecordId) {
+    if (!taskId) {
       return NextResponse.json(
-        { error: "taskRecordId is required" },
-        { status: 400 }
-      );
-    }
-
-    // Get task record
-    const [taskRecord] = await db
-      .select()
-      .from(TopviewTasks)
-      .where(eq(TopviewTasks.id, taskRecordId))
-      .limit(1);
-
-    if (!taskRecord) {
-      return NextResponse.json({ error: "Task not found" }, { status: 404 });
-    }
-
-    if (taskRecord.userId !== userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
-    }
-
-    if (!taskRecord.replaceProductTaskId) {
-      return NextResponse.json(
-        { error: "Image replacement not started" },
+        { error: "taskId is required" },
         { status: 400 }
       );
     }
 
     console.log("🔍 Querying image replacement status...");
+    console.log("  TopView TaskId:", taskId);
 
     if (!TOPVIEW_API_KEY || !TOPVIEW_UID) {
       return NextResponse.json(
@@ -64,7 +40,7 @@ export async function GET(req: NextRequest) {
       method: "GET",
       url: `${BASE_URL}/v3/product_avatar/task/image_replace/query`,
       params: {
-        taskId: taskRecord.replaceProductTaskId,
+        taskId: taskId,
         needCloudFrontUrl: "true",
       },
       headers: {
@@ -74,8 +50,12 @@ export async function GET(req: NextRequest) {
       },
     };
 
+    console.log("📡 Querying TopView API with taskId:", taskId);
+
     const response = await axios.request(options);
     const data = response.data;
+
+    console.log("📥 TopView API Response:", JSON.stringify(data, null, 2));
 
     if (!["200", 200, "0", 0].includes(data.code)) {
       console.error("❌ Image replacement status error:", data);
@@ -96,16 +76,8 @@ export async function GET(req: NextRequest) {
     };
 
     console.log("✅ Image replacement status:", result.status);
-
-    // Update database if completed
-    if (result.status === "success" && result.replaceProductResult) {
-      await db
-        .update(TopviewTasks)
-        .set({
-          replaceProductResults: result.replaceProductResult,
-          updatedAt: new Date(),
-        })
-        .where(eq(TopviewTasks.id, taskRecord.id));
+    if (result.replaceProductResult) {
+      console.log("  Result images count:", result.replaceProductResult.length);
     }
 
     return NextResponse.json({

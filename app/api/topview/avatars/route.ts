@@ -9,33 +9,25 @@ const TOPVIEW_UID = process.env.TOPVIEW_UID!;
 const BASE_URL = process.env.TOPVIEW_BASE_URL!;
 
 // TypeScript interfaces for TopView Avatar API response
-interface Ethnicity {
+interface AvatarEthnicity {
   ethnicityId: string;
   ethnicityName: string;
 }
 
-interface FaceSquareConfig {
-  y_f: number;
-  w: number;
-  h: number;
-  x: number;
-  y: number;
-  h_f: number;
-  x_f: number;
-  w_f: number;
+interface AvatarCategory {
+  categoryId: string;
+  categoryName: string;
 }
 
 interface Avatar {
-  aiavatarId: string;
-  aiavatarName: string;
-  gender?: string;
-  coverUrl?: string;
-  previewVideoUrl?: string;
-  previewImageUrl?: string;
-  ethnicities?: Ethnicity[];
-  voiceoverIdDefault?: string;
-  faceSquareConfig?: FaceSquareConfig;
-  type?: number;
+  avatarId: string;
+  avatarImagePath: string;
+  voiceoverId: string;
+  gender: string;
+  avatarCategoryList: AvatarCategory[];
+  objectMaskImageInfo: string;
+  avatarEthnicityList: AvatarEthnicity[];
+  minSubsType: string;
 }
 
 export async function GET(request: Request) {
@@ -63,7 +55,7 @@ export async function GET(request: Request) {
 
     // Fetch avatars from TopView API (using large page size to get all  avatars for filtering)
     const response = await fetch(
-      `${BASE_URL}/v1/aiavatar/query?pageNum=1&pageSize=500`,
+      `${BASE_URL}/v1/product_avatar/public_avatar/query?pageNum=1&pageSize=500`,
       {
         method: "GET",
         headers: {
@@ -111,8 +103,8 @@ export async function GET(request: Request) {
       }
 
       // Extract ethnicities
-      if (Array.isArray(avatar.ethnicities)) {
-        avatar.ethnicities.forEach((e: Ethnicity) => {
+      if (Array.isArray(avatar.avatarEthnicityList)) {
+        avatar.avatarEthnicityList.forEach((e: AvatarEthnicity) => {
           if (e.ethnicityName) {
             ethnicitySet.add(e.ethnicityName);
           }
@@ -135,9 +127,9 @@ export async function GET(request: Request) {
 
     if (ethnicityFilter && ethnicityFilter !== "all") {
       filteredAvatars = filteredAvatars.filter((avatar: Avatar) => {
-        if (!Array.isArray(avatar.ethnicities)) return false;
-        return avatar.ethnicities.some(
-          (e: Ethnicity) => e.ethnicityName === ethnicityFilter
+        if (!Array.isArray(avatar.avatarEthnicityList)) return false;
+        return avatar.avatarEthnicityList.some(
+          (e: AvatarEthnicity) => e.ethnicityName === ethnicityFilter
         );
       });
       console.log(`🔍 Filtered by ethnicity "${ethnicityFilter}": ${filteredAvatars.length} avatars`);

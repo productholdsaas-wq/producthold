@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
-import { Upload, Loader2, CheckCircle2, Link as LinkIcon, Image as ImageIcon } from "lucide-react";
+import { Upload, Loader2, Link as LinkIcon, Image as ImageIcon } from "lucide-react";
 import { useDropzone } from "react-dropzone";
 import { useVideoCreator } from "../../context/VideoCreatorContext";
+import { toast } from "sonner";
 
 type TabType = "url" | "upload";
 
@@ -29,7 +30,7 @@ export default function Step1ProductUpload() {
   const [scrapedImages, setScrapedImages] = useState<ScrapedImage[]>([]);
   const [selectedScrapedImage, setSelectedScrapedImage] = useState<ScrapedImage | null>(null);
 
-  // Check if we already have completed data
+  // Check if we already have completed data and restore previous state
   useEffect(() => {
     if (workflowData.bgRemovedImageUrl && workflowData.taskRecordId) {
       setPreview(workflowData.bgRemovedImageUrl);
@@ -38,14 +39,28 @@ export default function Step1ProductUpload() {
         setProductName(workflowData.productName);
       }
     }
-  }, [workflowData.bgRemovedImageUrl, workflowData.taskRecordId, workflowData.productName]);
+
+    // Restore URL scraper state
+    if (workflowData.productUrl) {
+      setProductUrl(workflowData.productUrl);
+      setActiveTab("url");
+    }
+    if (workflowData.scrapedImages) {
+      setScrapedImages(workflowData.scrapedImages);
+    }
+    if (workflowData.selectedScrapedImage) {
+      setSelectedScrapedImage(workflowData.selectedScrapedImage);
+    }
+  }, [workflowData]);
 
   const handleFetchUrl = async () => {
     if (!productUrl.trim()) {
       setError("Please enter a product URL");
+      toast.error("Please enter a product URL");
       return;
     }
 
+    const loadingToast = toast.loading("Fetching product data...");
     setFetchingUrl(true);
     setError(null);
 
@@ -66,14 +81,16 @@ export default function Step1ProductUpload() {
       const taskId = submitData.taskId;
 
       // Poll for scraper results
-      await pollScraperTask(taskId);
+      await pollScraperTask(taskId, loadingToast);
     } catch (error) {
       setFetchingUrl(false);
-      setError(error instanceof Error ? error.message : "Failed to fetch product data");
+      const errorMessage = error instanceof Error ? error.message : "Failed to fetch product data";
+      setError(errorMessage);
+      toast.error(errorMessage, { id: loadingToast });
     }
   };
 
-  const pollScraperTask = async (taskId: string) => {
+  const pollScraperTask = async (taskId: string, toastId: string | number) => {
     const maxAttempts = 30;
     let attempts = 0;
 
@@ -85,6 +102,13 @@ export default function Step1ProductUpload() {
         if (data.status === "success" && data.productImages && data.productImages.length > 0) {
           setFetchingUrl(false);
           setScrapedImages(data.productImages);
+          toast.success(`Found ${data.productImages.length} product images!`, { id: toastId });
+
+          // Save to workflow context
+          setWorkflowData({
+            productUrl,
+            scrapedImages: data.productImages,
+          });
 
           // Auto-fill product name if available
           if (data.productName && !productName) {
@@ -92,17 +116,21 @@ export default function Step1ProductUpload() {
           }
         } else if (data.status === "failed") {
           setFetchingUrl(false);
-          setError(data.errorMsg || "Failed to scrape product data");
+          const errorMsg = data.errorMsg || "Failed to scrape product data";
+          setError(errorMsg);
+          toast.error(errorMsg, { id: toastId });
         } else if (attempts < maxAttempts) {
           attempts++;
           setTimeout(poll, 2000);
         } else {
           setFetchingUrl(false);
           setError("Scraping timed out. Please try again.");
+          toast.error("Scraping timed out. Please try again.", { id: toastId });
         }
       } catch (error) {
         setFetchingUrl(false);
         setError("Failed to check scraper status");
+        toast.error("Failed to check scraper status", { id: toastId });
       }
     };
 
@@ -111,8 +139,14 @@ export default function Step1ProductUpload() {
 
   const handleSelectScrapedImage = async (image: ScrapedImage) => {
     setSelectedScrapedImage(image);
+    const loadingToast = toast.loading("Removing background...");
     setProcessing(true);
     setError(null);
+
+    // Save selected image to workflow context
+    setWorkflowData({
+      selectedScrapedImage: image,
+    });
 
     try {
       // Submit background removal with the scraped image fileId
@@ -128,10 +162,12 @@ export default function Step1ProductUpload() {
         throw new Error(data.error || "Failed to start background removal");
       }
 
-      pollForCompletion(data.taskRecordId);
+      pollForCompletion(data.taskRecordId, loadingToast);
     } catch (error) {
       setProcessing(false);
-      setError(error instanceof Error ? error.message : "Failed to process image");
+      const errorMessage = error instanceof Error ? error.message : "Failed to process image";
+      setError(errorMessage);
+      toast.error(errorMessage, { id: loadingToast });
     }
   };
 
@@ -148,6 +184,7 @@ export default function Step1ProductUpload() {
       reader.onload = () => setPreview(reader.result as string);
       reader.readAsDataURL(file);
 
+      const uploadToast = toast.loading("Uploading image...");
       setUploading(true);
       setError(null);
 
@@ -193,18 +230,23 @@ export default function Step1ProductUpload() {
         }
 
         setUploading(false);
+        toast.success("Image uploaded successfully!", { id: uploadToast });
+
+        const bgRemovalToast = toast.loading("Removing background...");
         setProcessing(true);
 
-        pollForCompletion(data.taskRecordId);
+        pollForCompletion(data.taskRecordId, bgRemovalToast);
       } catch (error) {
         setUploading(false);
-        setError(error instanceof Error ? error.message : "Upload failed");
+        const errorMessage = error instanceof Error ? error.message : "Upload failed";
+        setError(errorMessage);
+        toast.error(errorMessage, { id: uploadToast });
       }
     },
     [setError]
   );
 
-  const pollForCompletion = async (recordId: string) => {
+  const pollForCompletion = async (recordId: string, toastId: string | number) => {
     const maxAttempts = 60;
     let attempts = 0;
 
@@ -228,16 +270,19 @@ export default function Step1ProductUpload() {
           });
 
           setPreview(data.bgRemovedImageUrl);
+          toast.success("Background removed successfully!", { id: toastId });
         } else if (attempts < maxAttempts) {
           attempts++;
           setTimeout(poll, 2000);
         } else {
           setProcessing(false);
           setError("Background removal timed out. Please try again.");
+          toast.error("Background removal timed out. Please try again.", { id: toastId });
         }
       } catch (error) {
         setProcessing(false);
         setError("Failed to check status. Please try again.");
+        toast.error("Failed to check status. Please try again.", { id: toastId });
       }
     };
 
@@ -271,8 +316,8 @@ export default function Step1ProductUpload() {
         <button
           onClick={() => setActiveTab("url")}
           className={`flex-1 px-6 py-3 font-medium rounded-md transition-all ${activeTab === "url"
-              ? "bg-gradient-to-r from-brand-primary to-brand-primary-light text-white shadow-lg shadow-brand-primary/30"
-              : "text-muted-foreground hover:text-foreground hover:bg-sidebar-accent"
+            ? "bg-gradient-to-r from-brand-primary to-brand-primary-light text-white shadow-lg shadow-brand-primary/30"
+            : "text-muted-foreground hover:text-foreground hover:bg-sidebar-accent"
             }`}
         >
           <div className="flex items-center justify-center gap-2">
@@ -283,8 +328,8 @@ export default function Step1ProductUpload() {
         <button
           onClick={() => setActiveTab("upload")}
           className={`flex-1 px-6 py-3 font-medium rounded-md transition-all ${activeTab === "upload"
-              ? "bg-gradient-to-r from-brand-primary to-brand-primary-light text-white shadow-lg shadow-brand-primary/30"
-              : "text-muted-foreground hover:text-foreground hover:bg-sidebar-accent"
+            ? "bg-gradient-to-r from-brand-primary to-brand-primary-light text-white shadow-lg shadow-brand-primary/30"
+            : "text-muted-foreground hover:text-foreground hover:bg-sidebar-accent"
             }`}
         >
           <div className="flex items-center justify-center gap-2">
@@ -322,24 +367,32 @@ export default function Step1ProductUpload() {
               <p className="text-sm font-semibold text-foreground mb-4">
                 Select a product image:
               </p>
-              <div className="grid grid-cols-3 md:grid-cols-4 gap-4">
+              <div className="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3">
                 {scrapedImages.map((image) => (
                   <div
                     key={image.fileId}
-                    onClick={() => handleSelectScrapedImage(image)}
-                    className={`relative cursor-pointer rounded-xl overflow-hidden border-2 transition-all hover:scale-105 ${selectedScrapedImage?.fileId === image.fileId
-                        ? "border-brand-primary shadow-xl shadow-brand-primary/40 scale-105"
-                        : "border-border hover:border-brand-primary/50 hover:shadow-lg"
-                      }`}
+                    onClick={() => !processing && handleSelectScrapedImage(image)}
+                    className={`relative cursor-pointer rounded-lg overflow-hidden border-2 transition-all hover:scale-105 h-[120px] ${selectedScrapedImage?.fileId === image.fileId
+                      ? "border-brand-primary shadow-xl shadow-brand-primary/40 scale-105"
+                      : "border-border hover:border-brand-primary/50 hover:shadow-lg"
+                      } ${processing && selectedScrapedImage?.fileId === image.fileId ? "pointer-events-none" : ""}`}
                   >
                     <img
                       src={image.fileUrl}
                       alt={image.fileName}
-                      className="w-full aspect-square object-cover"
+                      className="w-full h-full object-cover"
                     />
-                    {selectedScrapedImage?.fileId === image.fileId && (
+                    {processing && selectedScrapedImage?.fileId === image.fileId && (
+                      <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center gap-2">
+                        <Loader2 className="w-6 h-6 text-white animate-spin" />
+                        <span className="text-xs text-white font-medium">Processing...</span>
+                      </div>
+                    )}
+                    {!processing && selectedScrapedImage?.fileId === image.fileId && (
                       <div className="absolute inset-0 bg-brand-primary/20 flex items-center justify-center">
-                        <CheckCircle2 className="w-8 h-8 text-white" />
+                        <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                        </svg>
                       </div>
                     )}
                   </div>
@@ -381,7 +434,7 @@ export default function Step1ProductUpload() {
           >
             <input {...getInputProps()} />
 
-            {!preview && (
+            {!preview && !uploading && (
               <div className="space-y-4">
                 <div className="w-20 h-20 rounded-full bg-gradient-to-br from-brand-primary/20 to-brand-primary-light/20 flex items-center justify-center mx-auto">
                   <Upload className="w-10 h-10 text-brand-primary" />
@@ -394,6 +447,22 @@ export default function Step1ProductUpload() {
                   </p>
                   <p className="text-sm text-muted-foreground">
                     PNG, JPG, JPEG or WEBP (max 10MB)
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {uploading && !preview && (
+              <div className="space-y-4">
+                <div className="w-20 h-20 rounded-full bg-gradient-to-br from-brand-primary/20 to-brand-primary-light/20 flex items-center justify-center mx-auto">
+                  <Loader2 className="w-10 h-10 text-brand-primary animate-spin" />
+                </div>
+                <div>
+                  <p className="text-foreground font-semibold mb-1 text-lg">
+                    Uploading your image...
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    Please wait while we process your file
                   </p>
                 </div>
               </div>
@@ -426,68 +495,19 @@ export default function Step1ProductUpload() {
         </div>
       )}
 
-      {/* Processing State */}
-      {processing && (
-        <div className="mt-8 flex items-center justify-center gap-2 p-4 bg-gradient-to-r from-brand-primary/10 to-brand-primary-light/10 rounded-lg border border-brand-primary/20">
-          <Loader2 className="w-5 h-5 animate-spin text-brand-primary" />
-          <span className="font-medium text-brand-primary">Removing background...</span>
-        </div>
-      )}
-
-      {/* Success State */}
-      {isCompleted && (
-        <div className="mt-8 flex items-center justify-center gap-2 p-4 bg-gradient-to-r from-green-500/10 to-emerald-500/10 rounded-lg border border-green-500/20 animate-celebration">
-          <CheckCircle2 className="w-5 h-5 text-green-500" />
-          <span className="font-medium text-green-500">Background removed successfully!</span>
-        </div>
-      )}
-
       {/* Next Button */}
       {isCompleted && (
         <div className="flex justify-end mt-8">
           <button
             onClick={handleNext}
-            className="px-8 py-3 bg-gradient-to-r from-brand-primary to-brand-primary-light text-white rounded-lg font-semibold hover:shadow-xl hover:shadow-brand-primary/40 transition-all animate-fade-in"
+            className="px-8 py-3 bg-gradient-to-r from-brand-primary to-brand-primary-light text-white rounded-lg font-semibold hover:shadow-xl hover:shadow-brand-primary/40 transition-all"
           >
             Continue to Choose Avatar
           </button>
         </div>
       )}
 
-      <style>{`
-        @keyframes celebration {
-          0% {
-            transform: scale(0.8);
-            opacity: 0;
-          }
-          50% {
-            transform: scale(1.05);
-          }
-          100% {
-            transform: scale(1);
-            opacity: 1;
-          }
-        }
-        
-        @keyframes fadeIn {
-          from {
-            opacity: 0;
-            transform: translateY(10px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-        
-        .animate-celebration {
-          animation: celebration 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
-        }
-        
-        .animate-fade-in {
-          animation: fadeIn 0.5s ease-out 0.3s both;
-        }
-      `}</style>
+
     </div>
   );
 }

@@ -11,8 +11,25 @@ interface WorkflowData {
   scrapedImageFileId?: string;  // Added for scraped images
   bgRemovedImageFileId?: string;
   bgRemovedImageUrl?: string;
+
+  // Step 1: URL Scraper state persistence
+  productUrl?: string;
+  scrapedImages?: Array<{
+    fileId: string;
+    fileName: string;
+    fileUrl: string;
+  }>;
+  selectedScrapedImage?: {
+    fileId: string;
+    fileName: string;
+    fileUrl: string;
+  } | null;
+
+  // Step 2: Avatar/Template Selection
   selectedImageId?: string;
   selectedImageUrl?: string;
+
+  // Step 3: Video Generation
   videoRecordId?: string;
   finishedVideoUrl?: string;
 }

@@ -61,6 +61,14 @@ export async function POST(req: NextRequest) {
     console.log("🔍 Received avatarId from frontend:", avatarId);
     console.log("🔍 Received templateImageFileId:", templateImageFileId);
 
+    // Validate environment variables
+    console.log("🔧 Environment check:");
+    console.log("  - TOPVIEW_UID exists:", !!TOPVIEW_UID);
+    console.log("  - TOPVIEW_UID length:", TOPVIEW_UID?.length || 0);
+    console.log("  - TOPVIEW_API_KEY exists:", !!TOPVIEW_API_KEY);
+    console.log("  - TOPVIEW_API_KEY length:", TOPVIEW_API_KEY?.length || 0);
+    console.log("  - BASE_URL:", BASE_URL);
+
     if (!TOPVIEW_API_KEY || !TOPVIEW_UID) {
       return NextResponse.json(
         { error: "Missing Topview API credentials." },
@@ -69,6 +77,15 @@ export async function POST(req: NextRequest) {
     }
 
     // Prepare request for TopView
+    console.log("🔍 Task record bgRemovedImageFileId:", taskRecord.bgRemovedImageFileId);
+    
+    if (!taskRecord.bgRemovedImageFileId) {
+      return NextResponse.json(
+        { error: "Background removed image file ID is missing. Please complete Step 1 first." },
+        { status: 400 }
+      );
+    }
+    
     const replaceRequest: {
       generateImageMode: "auto" | "manual";
       productImageWithoutBackgroundFileId: string;
@@ -78,8 +95,10 @@ export async function POST(req: NextRequest) {
       location?: number[][];
     } = {
       generateImageMode,
-      productImageWithoutBackgroundFileId: taskRecord.bgRemovedImageFileId!,
+      productImageWithoutBackgroundFileId: taskRecord.bgRemovedImageFileId,
     };
+
+    console.log("✅ Product image file ID:", taskRecord.bgRemovedImageFileId);
 
     // Add avatarId to request if provided
     if (avatarId) {
@@ -100,7 +119,6 @@ export async function POST(req: NextRequest) {
     if (generateImageMode === "manual" && location) {
       replaceRequest.location = location;
     }
-
     // Submit to TopView using axios
     console.log("📤 Sending to TopView API:", replaceRequest);
     console.log("🔑 Using TOPVIEW_UID:", TOPVIEW_UID?.substring(0, 8) + "...");
@@ -125,10 +143,34 @@ export async function POST(req: NextRequest) {
       "Authorization": "Bearer " + TOPVIEW_API_KEY?.substring(0, 10) + "...",
     });
 
-    const response = await axios.request(options);
-    const data = response.data;
-    
-    console.log("📥 TopView API Response:", data);
+    let response, data;
+    try {
+      response = await axios.request(options);
+      data = response.data;
+      console.log("📥 TopView API Response:", data);
+    } catch (axiosError: unknown) {
+      const err = axiosError as AxiosError;
+      console.error("❌ Axios request failed:", {
+        status: err.response?.status,
+        statusText: err.response?.statusText,
+        data: err.response?.data,
+        message: err.message,
+      });
+      
+      // Check if it's an authorization error
+      if (err.response?.status === 401 || err.response?.status === 403) {
+        return NextResponse.json(
+          { 
+            error: "Authorization failed", 
+            details: "Check TOPVIEW_API_KEY and TOPVIEW_UID in environment variables",
+            response: err.response?.data 
+          },
+          { status: 500 }
+        );
+      }
+      
+      throw err; // Re-throw to be caught by outer catch
+    }
 
     if (!["200", 200, "0", 0].includes(data.code)) {
       console.error("❌ Image replacement submission error:", data);
