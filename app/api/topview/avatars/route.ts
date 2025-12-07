@@ -50,8 +50,9 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const genderFilter = searchParams.get("gender");
     const ethnicityFilter = searchParams.get("ethnicity");
+    const categoryFilter = searchParams.get("category");
 
-    console.log("🔍 Filters requested:", { genderFilter, ethnicityFilter });
+    console.log("🔍 Filters requested:", { genderFilter, ethnicityFilter, categoryFilter });
 
     // Fetch avatars from TopView API (using large page size to get all  avatars for filtering)
     const response = await fetch(
@@ -92,9 +93,10 @@ export async function GET(request: Request) {
       }
     }
 
-    // Extract unique gender and ethnicity filters
+    // Extract unique gender, ethnicity, and category filters
     const genderSet = new Set<string>();
     const ethnicitySet = new Set<string>();
+    const categorySet = new Set<string>();
 
     avatars.forEach((avatar: Avatar) => {
       // Extract gender
@@ -110,10 +112,20 @@ export async function GET(request: Request) {
           }
         });
       }
+
+      // Extract categories
+      if (Array.isArray(avatar.avatarCategoryList)) {
+        avatar.avatarCategoryList.forEach((c: AvatarCategory) => {
+          if (c.categoryName) {
+            categorySet.add(c.categoryName);
+          }
+        });
+      }
     });
 
     const genderList = Array.from(genderSet);
     const ethnicityList = Array.from(ethnicitySet);
+    const categoryList = Array.from(categorySet).sort();
 
     // Apply filters if provided
     let filteredAvatars = avatars;
@@ -135,11 +147,22 @@ export async function GET(request: Request) {
       console.log(`🔍 Filtered by ethnicity "${ethnicityFilter}": ${filteredAvatars.length} avatars`);
     }
 
+    if (categoryFilter && categoryFilter !== "all") {
+      filteredAvatars = filteredAvatars.filter((avatar: Avatar) => {
+        if (!Array.isArray(avatar.avatarCategoryList)) return false;
+        return avatar.avatarCategoryList.some(
+          (c: AvatarCategory) => c.categoryName === categoryFilter
+        );
+      });
+      console.log(`🔍 Filtered by category "${categoryFilter}": ${filteredAvatars.length} avatars`);
+    }
+
     console.log("✅ Avatar list loaded:", {
       totalAvatars: avatars.length,
       filteredAvatars: filteredAvatars.length,
       genderCount: genderList.length,
       ethnicityCount: ethnicityList.length,
+      categoryCount: categoryList.length,
     });
 
     return NextResponse.json({
@@ -147,6 +170,7 @@ export async function GET(request: Request) {
       filters: {
         gender: genderList,
         ethnicity: ethnicityList,
+        category: categoryList,
       },
       avatars: filteredAvatars,
     });

@@ -32,6 +32,11 @@ export default function Step1ProductUpload() {
 
   // Check if we already have completed data and restore previous state
   useEffect(() => {
+    // Restore active tab
+    if (workflowData.activeTab) {
+      setActiveTab(workflowData.activeTab);
+    }
+
     if (workflowData.bgRemovedImageUrl && workflowData.taskRecordId) {
       setPreview(workflowData.bgRemovedImageUrl);
       setIsCompleted(true);
@@ -43,7 +48,6 @@ export default function Step1ProductUpload() {
     // Restore URL scraper state
     if (workflowData.productUrl) {
       setProductUrl(workflowData.productUrl);
-      setActiveTab("url");
     }
     if (workflowData.scrapedImages) {
       setScrapedImages(workflowData.scrapedImages);
@@ -51,7 +55,8 @@ export default function Step1ProductUpload() {
     if (workflowData.selectedScrapedImage) {
       setSelectedScrapedImage(workflowData.selectedScrapedImage);
     }
-  }, [workflowData]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleFetchUrl = async () => {
     if (!productUrl.trim()) {
@@ -108,6 +113,7 @@ export default function Step1ProductUpload() {
           setWorkflowData({
             productUrl,
             scrapedImages: data.productImages,
+            productName: data.productName || undefined,
           });
 
           // Auto-fill product name if available
@@ -314,7 +320,10 @@ export default function Step1ProductUpload() {
       {/* Premium Tabs */}
       <div className="flex gap-3 mb-8 p-1 bg-sidebar rounded-lg">
         <button
-          onClick={() => setActiveTab("url")}
+          onClick={() => {
+            setActiveTab("url");
+            setWorkflowData({ activeTab: "url" });
+          }}
           className={`flex-1 px-6 py-3 font-medium rounded-md transition-all ${activeTab === "url"
             ? "bg-gradient-to-r from-brand-primary to-brand-primary-light text-white shadow-lg shadow-brand-primary/30"
             : "text-muted-foreground hover:text-foreground hover:bg-sidebar-accent"
@@ -326,7 +335,10 @@ export default function Step1ProductUpload() {
           </div>
         </button>
         <button
-          onClick={() => setActiveTab("upload")}
+          onClick={() => {
+            setActiveTab("upload");
+            setWorkflowData({ activeTab: "upload" });
+          }}
           className={`flex-1 px-6 py-3 font-medium rounded-md transition-all ${activeTab === "upload"
             ? "bg-gradient-to-r from-brand-primary to-brand-primary-light text-white shadow-lg shadow-brand-primary/30"
             : "text-muted-foreground hover:text-foreground hover:bg-sidebar-accent"
@@ -475,12 +487,6 @@ export default function Step1ProductUpload() {
                   alt="Preview"
                   className="max-h-64 mx-auto rounded-lg shadow-xl"
                 />
-                {uploading && (
-                  <div className="flex items-center justify-center gap-2 text-brand-primary">
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                    <span className="font-medium">Uploading...</span>
-                  </div>
-                )}
               </div>
             )}
           </div>

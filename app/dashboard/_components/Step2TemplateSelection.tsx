@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { ChevronLeft, Loader2, ChevronRight } from "lucide-react";
 import axios from "axios";
 import {
@@ -40,7 +40,16 @@ interface Avatar {
 }
 
 export default function Step2TemplateSelection() {
-  const { workflowData, setWorkflowData, nextStep, previousStep, setError } = useVideoCreator();
+  const {
+    workflowData,
+    setWorkflowData,
+    nextStep,
+    previousStep,
+    setError,
+    cachedResources,
+    setCachedResources,
+    isCacheValid,
+  } = useVideoCreator();
 
   const taskRecordId = workflowData.taskRecordId!;
   const bgRemovedImageUrl = workflowData.bgRemovedImageUrl!;
@@ -58,8 +67,10 @@ export default function Step2TemplateSelection() {
   // Filter states
   const [selectedGender, setSelectedGender] = useState("all");
   const [selectedEthnicity, setSelectedEthnicity] = useState("all");
+  const [selectedCategory, setSelectedCategory] = useState("all");
   const [genderList, setGenderList] = useState<string[]>([]);
   const [ethnicityList, setEthnicityList] = useState<string[]>([]);
+  const [categoryList, setCategoryList] = useState<string[]>([]);
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
@@ -67,19 +78,78 @@ export default function Step2TemplateSelection() {
 
   const hasLoadedRef = useRef(false);
 
-  // Load initial data
+  // Load initial data and restore state from context
   useEffect(() => {
     if (!hasLoadedRef.current) {
       loadInitialData();
+
+      // Restore results from context if they exist
+      if (workflowData.replaceProductResults) {
+        setResults(workflowData.replaceProductResults);
+      }
+
+      // Restore selected avatar page
+      if (workflowData.selectedAvatarPage) {
+        setCurrentPage(workflowData.selectedAvatarPage);
+      }
+
       hasLoadedRef.current = true;
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const loadInitialData = async () => {
+  // Restore selected avatar when avatars are loaded
+  useEffect(() => {
+    if (avatars.length > 0 && workflowData.selectedAvatarId && !selectedAvatar) {
+      const avatar = avatars.find(a => a.avatarId === workflowData.selectedAvatarId);
+      if (avatar) {
+        setSelectedAvatar(avatar);
+      }
+    }
+  }, [avatars, workflowData.selectedAvatarId, selectedAvatar]);
+
+  // Extract unique categories from avatars
+  useEffect(() => {
+    if (avatars.length > 0) {
+      const categories = new Set<string>();
+      avatars.forEach(avatar => {
+        avatar.avatarCategoryList.forEach(cat => {
+          if (cat.categoryName) {
+            categories.add(cat.categoryName);
+          }
+        });
+      });
+      setCategoryList(Array.from(categories).sort());
+    }
+  }, [avatars]);
+
+  // Save current page to workflow context
+  useEffect(() => {
+    if (currentPage > 1) {
+      setWorkflowData({ selectedAvatarPage: currentPage });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentPage]);
+
+  const loadInitialData = useCallback(async () => {
+    // Check if we have valid cached avatars
+    if (isCacheValid('avatars')) {
+      console.log('📦 Using cached avatars');
+      const cache = cachedResources.avatars!;
+      setAvatars(cache.data);
+      setFilteredAvatars(cache.data);
+      setGenderList(cache.filters.gender || []);
+      setEthnicityList(cache.filters.ethnicity || []);
+      setCategoryList(cache.filters.category || []);
+      return;
+    }
+
+    // Fetch fresh data if cache is invalid or empty
     try {
       setLoadingFilters(true);
       setLoading(true);
 
+      console.log('🔄 Fetching fresh avatars from API');
       const { data } = await axios.get("/api/topview/avatars");
 
       if (data.success) {
@@ -87,6 +157,20 @@ export default function Step2TemplateSelection() {
         setFilteredAvatars(data.avatars);
         setGenderList(data.filters.gender || []);
         setEthnicityList(data.filters.ethnicity || []);
+        setCategoryList(data.filters.category || []);
+
+        // Cache the results
+        setCachedResources({
+          avatars: {
+            data: data.avatars,
+            filters: {
+              gender: data.filters.gender || [],
+              ethnicity: data.filters.ethnicity || [],
+              category: data.filters.category || [],
+            },
+            timestamp: Date.now(),
+          },
+        });
       }
     } catch (error) {
       console.error("Failed to load avatars", error);
@@ -95,15 +179,16 @@ export default function Step2TemplateSelection() {
       setLoadingFilters(false);
       setLoading(false);
     }
-  };
+  }, [setError, isCacheValid, cachedResources, setCachedResources]);
 
-  const fetchFilteredAvatars = async (genderValue: string, ethnicityValue: string) => {
+  const fetchFilteredAvatars = async (genderValue: string, ethnicityValue: string, categoryValue: string) => {
     setLoading(true);
 
     try {
       const params = new URLSearchParams();
       if (genderValue !== "all") params.append("gender", genderValue);
       if (ethnicityValue !== "all") params.append("ethnicity", ethnicityValue);
+      if (categoryValue !== "all") params.append("category", categoryValue);
 
       const url = params.toString()
         ? `/api/topview/avatars?${params.toString()}`
@@ -187,6 +272,8 @@ export default function Step2TemplateSelection() {
           console.log("✅ Image replacement completed successfully!");
           setProcessing(false);
           setResults(data.replaceProductResult);
+          // Save results to context for persistence
+          setWorkflowData({ replaceProductResults: data.replaceProductResult });
         } else if (data.status === "failed" || data.status === "error") {
           console.error("❌ Image replacement failed:", data);
           setProcessing(false);
@@ -260,9 +347,20 @@ export default function Step2TemplateSelection() {
       {/* Show Results or Avatar Selection */}
       {results ? (
         <div>
-          <h3 className="text-lg font-semibold text-foreground mb-4">
-            Select Generated Image:
-          </h3>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-foreground">
+              Select Generated Image:
+            </h3>
+            <button
+              onClick={() => {
+                setResults(null);
+                setWorkflowData({ replaceProductResults: undefined });
+              }}
+              className="px-4 py-2 text-sm border border-border rounded-lg hover:bg-white/5 transition"
+            >
+              Back to Selection
+            </button>
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {results.map((result) => (
               <div
@@ -293,7 +391,7 @@ export default function Step2TemplateSelection() {
                 disabled={loadingFilters}
                 onValueChange={(value) => {
                   setSelectedGender(value);
-                  fetchFilteredAvatars(value, selectedEthnicity);
+                  fetchFilteredAvatars(value, selectedEthnicity, selectedCategory);
                 }}
               >
                 <SelectTrigger className="w-[180px] disabled:opacity-60 relative overflow-hidden">
@@ -319,7 +417,7 @@ export default function Step2TemplateSelection() {
                 disabled={loadingFilters}
                 onValueChange={(value) => {
                   setSelectedEthnicity(value);
-                  fetchFilteredAvatars(selectedGender, value);
+                  fetchFilteredAvatars(selectedGender, value, selectedCategory);
                 }}
               >
                 <SelectTrigger className="w-[180px] disabled:opacity-60 relative overflow-hidden">
@@ -335,6 +433,32 @@ export default function Step2TemplateSelection() {
                   {ethnicityList.map((ethnicity) => (
                     <SelectItem key={ethnicity} value={ethnicity}>
                       {ethnicity}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Select
+                value={loadingFilters ? "" : selectedCategory}
+                disabled={loadingFilters}
+                onValueChange={(value) => {
+                  setSelectedCategory(value);
+                  fetchFilteredAvatars(selectedGender, selectedEthnicity, value);
+                }}
+              >
+                <SelectTrigger className="w-[180px] disabled:opacity-60 relative overflow-hidden">
+                  <SelectValue
+                    placeholder={loadingFilters ? "Loading..." : "Category"}
+                  />
+                  {loadingFilters && (
+                    <div className="absolute inset-0 shimmer" />
+                  )}
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Categories</SelectItem>
+                  {categoryList.map((category) => (
+                    <SelectItem key={category} value={category}>
+                      {category}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -389,16 +513,17 @@ export default function Step2TemplateSelection() {
                       </div>
                       <h3 className="text-lg font-semibold text-foreground mb-2">No Avatars Found</h3>
                       <p className="text-sm text-muted-foreground max-w-md">
-                        {selectedGender !== "all" || selectedEthnicity !== "all"
+                        {selectedGender !== "all" || selectedEthnicity !== "all" || selectedCategory !== "all"
                           ? "No avatars match your current filters. Try adjusting your selection."
                           : "No avatars are currently available. Please try again later."}
                       </p>
-                      {(selectedGender !== "all" || selectedEthnicity !== "all") && (
+                      {(selectedGender !== "all" || selectedEthnicity !== "all" || selectedCategory !== "all") && (
                         <button
                           onClick={() => {
                             setSelectedGender("all");
                             setSelectedEthnicity("all");
-                            fetchFilteredAvatars("all", "all");
+                            setSelectedCategory("all");
+                            fetchFilteredAvatars("all", "all", "all");
                           }}
                           className="mt-4 px-4 py-2 text-sm bg-brand-primary text-white rounded-lg hover:bg-brand-primary-light transition"
                         >
@@ -415,7 +540,11 @@ export default function Step2TemplateSelection() {
                           ? "border-brand-primary shadow-lg shadow-brand-primary/20 scale-105"
                           : "border-transparent hover:border-brand-primary/50 hover:shadow-md"
                         }`}
-                      onClick={() => setSelectedAvatar(avatar)}
+                      onClick={() => {
+                        setSelectedAvatar(avatar);
+                        // Persist avatar selection
+                        setWorkflowData({ selectedAvatarId: avatar.avatarId });
+                      }}
                     >
                       <img
                         src={avatar.avatarImagePath}
@@ -466,7 +595,8 @@ export default function Step2TemplateSelection() {
           <div className="flex items-center justify-between">
             <button
               onClick={previousStep}
-              className="mt-6 px-6 py-3 rounded-lg border border-border text-sm text-foreground hover:bg-white/5 transition"
+              disabled={processing}
+              className="mt-6 px-6 py-3 rounded-lg border border-border text-sm text-foreground hover:bg-white/5 transition disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Back
             </button>

@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@clerk/nextjs": "^6.35.6",
+    "@google/genai": "^1.31.0",
     "@neondatabase/serverless": "^1.0.2",
     "@radix-ui/react-select": "^2.2.6",
     "axios": "^1.13.2",
