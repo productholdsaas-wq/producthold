@@ -5,13 +5,11 @@ import Link from "next/link";
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
     return (
-        <div className="min-h-screen w-full flex bg-background">
+        <div className="min-h-screen w-full flex bg-background hero-glow overflow-hidden">
             {/* LEFT SIDE - BRANDING & VISUALS */}
-            <div className="hidden lg:flex w-1/2 relative flex-col justify-between p-12 overflow-hidden">
-                {/* Background Gradient/Image */}
-                <div className="absolute inset-0 z-0 hero-glow">
-                    <div className="absolute inset-0 bg-gradient-to-br from-elevated to-background" />
-                </div>
+            <div className="hidden lg:flex w-1/2 relative flex-col justify-between p-12">
+                {/* Background Gradient/Image - Removed as main container has hero-glow */}
+                <div className="absolute inset-0 z-0 bg-gradient-to-br from-elevated/50 to-transparent" />
 
                 {/* Content Container */}
                 <div className="relative z-10 flex flex-col h-full justify-between">
@@ -96,34 +94,34 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
             </div>
 
             {/* RIGHT SIDE - FORM */}
-            <div className="w-full lg:w-1/2 flex flex-col items-center justify-center p-6 lg:p-12 relative">
-                {/* Mobile Logo (visible only on small screens) */}
-                <div className="absolute top-6 left-6 lg:hidden">
-                    <Link href="/" className="flex items-center gap-2">
+            <div className="w-full lg:w-1/2 flex flex-col items-center justify-center p-6 lg:p-12 relative z-10 bg-black/40 backdrop-blur-sm border-l border-white/5">
+                <div className="w-full max-w-md bg-black/20 backdrop-blur-xl border border-white/10 p-8 rounded-3xl shadow-2xl animate-in fade-in slide-in-from-right-8 duration-700">
+                    {/* Mobile Logo (visible only on small screens) */}
+                    <div className="lg:hidden flex justify-center mb-8">
+                        <Link href="/" className="flex items-center gap-2">
+                            <Image
+                                src="/removebg-logo-white.png"
+                                alt="VidShortify Logo"
+                                width={32}
+                                height={32}
+                            />
+                        </Link>
+                    </div>
+
+                    {/* Desktop Logo (centered at top, visible only on large screens) */}
+                    <div className="hidden lg:flex items-center justify-center gap-2 mb-8">
                         <Image
                             src="/removebg-logo-white.png"
                             alt="VidShortify Logo"
-                            width={32}
-                            height={32}
+                            width={40}
+                            height={40}
+                            className="object-contain"
                         />
-                    </Link>
-                </div>
+                        <span className="text-2xl font-bold text-white tracking-wide">
+                            VidShortify
+                        </span>
+                    </div>
 
-                {/* Desktop Logo (centered at top, visible only on large screens) */}
-                <div className="hidden lg:flex items-center justify-center gap-2 mb-8">
-                    <Image
-                        src="/removebg-logo-white.png"
-                        alt="VidShortify Logo"
-                        width={40}
-                        height={40}
-                        className="object-contain"
-                    />
-                    <span className="text-2xl font-bold text-white tracking-wide">
-                        VidShortify
-                    </span>
-                </div>
-
-                <div className="w-full max-w-md">
                     {children}
                 </div>
             </div>

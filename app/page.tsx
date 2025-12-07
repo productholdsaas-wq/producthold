@@ -1,30 +1,33 @@
-import Image from "next/image";
+import Header from "./_components/Header";
+import HeroSection from "./_components/HeroSection";
+import ShowcaseSection from "./_components/ShowcaseSection";
+import AnySizeSection from "./_components/AnySizeSection";
+import FeaturesSection from "./_components/FeaturesSection";
+import HowItWorksSection from "./_components/HowItWorksSection";
+import KeyFeaturesSection from "./_components/KeyFeaturesSection";
+import TestimonialsSection from "./_components/TestimonialsSection";
+import PricingSection from "./_components/PricingSection";
+import FAQSection from "./_components/FAQSection";
+import Footer from "./_components/Footer";
+import CTASection from "./_components/CTASection";
 
 export default function Home() {
- return (
-    <section className="hero-glow min-h-screen flex items-center justify-center px-6">
-      <div className="w-full max-w-md rounded-2xl bg-elevated p-8 shadow-[var(--shadow-soft)] ring-1 ring-border">
-        
-        <h1 className="text-3xl font-bold text-foreground mb-2">
-          Blue SaaS Theme ✅
-        </h1>
-
-        <p className="text- mb-6 text-sm">
-          If this card looks premium dark-blue with a glowing CTA button,
-          your global theme is working perfectly.
-        </p>
-
-        <div className="flex gap-4">
-          <button className="btn-primary px-6 py-3 rounded-md text-sm font-semibold">
-            Primary Action
-          </button>
-
-          <button className="px-6 py-3 rounded-md border border-border text-sm text-foreground hover:bg-white/5 transition">
-            Secondary
-          </button>
-        </div>
-
-      </div>
-    </section>
+  return (
+    <main className="min-h-screen bg-background text-foreground selection:bg-brand-blue selection:text-white">
+      <Header />
+      <section className="hero-glow min-h-screen flex flex-col">
+        <HeroSection />
+        <ShowcaseSection />
+        <AnySizeSection />
+        <FeaturesSection />
+        <HowItWorksSection />
+        <KeyFeaturesSection />
+        <TestimonialsSection />
+        <PricingSection />
+        <FAQSection />
+        <CTASection />
+      </section>
+      <Footer />
+    </main>
   );
 }

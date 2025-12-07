@@ -133,9 +133,22 @@ body {
   transform: scale(1.03);
 }
 .hero-glow {
+  position: relative;
+  isolation: isolate;
+}
+
+.hero-glow::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
   background:
-    radial-gradient(circle at top, rgba(59, 130, 246, 0.35), transparent 55%),
-    radial-gradient(circle at bottom left, rgba(29, 78, 216, 0.45), transparent 55%);
+    radial-gradient(at 0% 0%, rgba(57, 124, 247, 0.25) 0px, transparent 50%),
+    radial-gradient(at 100% 0%, rgba(65, 59, 250, 0.25) 0px, transparent 50%),
+    radial-gradient(at 100% 100%, rgba(22, 93, 252, 0.25) 0px, transparent 50%),
+    radial-gradient(at 0% 100%, rgba(57, 124, 247, 0.2) 0px, transparent 50%),
+    radial-gradient(circle at 50% 50%, rgba(65, 59, 250, 0.15), transparent 60%);
+  filter: blur(80px); /* Increased blur for smoother mesh */
 }
 
 @layer base {
@@ -145,5 +158,54 @@ body {
 
   body {
     @apply bg-background text-foreground;
+  }
+  /* Marquee Animation */
+  .animate-marquee {
+    animation: marquee 40s linear infinite;
+  }
+  
+  .animate-marquee:hover {
+    animation-play-state: paused;
+  }
+
+  .animate-gradient-flow {
+    background-size: 400% 400%;
+    animation: gradient-flow 15s ease infinite;
+  }
+}
+
+@keyframes marquee {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+@keyframes gradient-flow {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@layer utilities {
+  .animate-marquee {
+    animation: marquee 40s linear infinite;
+  }
+}
+
+@keyframes marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
   }
 }
