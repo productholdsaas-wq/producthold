@@ -22,10 +22,11 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const taskRecordId = searchParams.get("taskRecordId");
     const videoRecordId = searchParams.get("videoRecordId");
+    const taskId = searchParams.get("taskId"); // TopView task ID
 
-    if (!taskRecordId && !videoRecordId) {
+    if (!taskRecordId && !videoRecordId && !taskId) {
       return NextResponse.json(
-        { error: "taskRecordId or videoRecordId is required" },
+        { error: "taskRecordId, videoRecordId, or taskId is required" },
         { status: 400 }
       );
     }
@@ -34,7 +35,22 @@ export async function GET(req: NextRequest) {
     let taskRecord;
     let videoRecord;
 
-    if (videoRecordId) {
+    if (taskId) {
+      // Query by TopView task ID (videoTaskId)
+      [taskRecord] = await db
+        .select()
+        .from(TopviewTasks)
+        .where(eq(TopviewTasks.videoTaskId, taskId))
+        .limit(1);
+
+      if (taskRecord) {
+        [videoRecord] = await db
+          .select()
+          .from(TopviewVideo)
+          .where(eq(TopviewVideo.taskTableId, taskRecord.id))
+          .limit(1);
+      }
+    } else if (videoRecordId) {
       [videoRecord] = await db
         .select()
         .from(TopviewVideo)

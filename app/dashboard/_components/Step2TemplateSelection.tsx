@@ -39,6 +39,49 @@ interface Avatar {
   minSubsType: string;
 }
 
+// Separate component for avatar card to handle image loading state
+function AvatarCard({ avatar, isSelected, onSelect }: {
+  avatar: Avatar;
+  isSelected: boolean;
+  onSelect: (avatar: Avatar) => void;
+}) {
+  const [imageLoaded, setImageLoaded] = useState(false);
+
+  return (
+    <div
+      className={`relative group cursor-pointer rounded-xl overflow-hidden border-2 transition-all duration-200 h-[260px]
+        ${isSelected
+          ? "border-brand-primary shadow-lg shadow-brand-primary/20 scale-105"
+          : "border-transparent hover:border-brand-primary/50 hover:shadow-md"
+        }`}
+      onClick={() => onSelect(avatar)}
+    >
+      {/* Image container with shimmer effect */}
+      <div className="absolute inset-0">
+        <img
+          src={avatar.avatarImagePath}
+          alt={`Avatar ${avatar.avatarId}`}
+          className={`w-full h-full object-cover transition-opacity duration-300 ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
+          onLoad={() => setImageLoaded(true)}
+          onError={() => setImageLoaded(true)}
+        />
+        {/* Shimmer effect while loading */}
+        {!imageLoaded && (
+          <div className="absolute inset-0 bg-sidebar">
+            <div className="shimmer" />
+          </div>
+        )}
+      </div>
+
+      <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/80 to-transparent">
+        <p className="text-white text-sm font-medium truncate">
+          {avatar.avatarCategoryList[0]?.categoryName || 'Avatar'}
+        </p>
+      </div>
+    </div>
+  );
+}
+
 export default function Step2TemplateSelection() {
   const {
     workflowData,
@@ -57,6 +100,7 @@ export default function Step2TemplateSelection() {
   const [processing, setProcessing] = useState(false);
   const [mode] = useState<"auto" | "manual">("auto");
   const [results, setResults] = useState<ReplaceProductResult[] | null>(null);
+  const [selectedResult, setSelectedResult] = useState<ReplaceProductResult | null>(null);
 
   // Avatar fetching states
   const [avatars, setAvatars] = useState<Avatar[]>([]);
@@ -310,11 +354,17 @@ export default function Step2TemplateSelection() {
   };
 
   const handleSelectResult = (result: ReplaceProductResult) => {
-    setWorkflowData({
-      selectedImageId: result.imageId,
-      selectedImageUrl: result.url,
-    });
-    nextStep();
+    setSelectedResult(result);
+  };
+
+  const handleConfigureVideo = () => {
+    if (selectedResult) {
+      setWorkflowData({
+        selectedImageId: selectedResult.imageId,
+        selectedImageUrl: selectedResult.url,
+      });
+      nextStep();
+    }
   };
 
   const totalPages = Math.ceil(filteredAvatars.length / ITEMS_PER_PAGE);
@@ -334,7 +384,7 @@ export default function Step2TemplateSelection() {
   }, [currentPage, filteredAvatars]);
 
   return (
-    <div className="bg-card border border-border rounded-xl p-8">
+    <div className="bg-card border border-border rounded-xl p-4 sm:p-8">
       <div className="flex items-center gap-4 mb-6">
         <div>
           <h2 className="text-2xl font-bold text-foreground">Choose Avatar</h2>
@@ -354,27 +404,34 @@ export default function Step2TemplateSelection() {
             <button
               onClick={() => {
                 setResults(null);
+                setSelectedResult(null);
                 setWorkflowData({ replaceProductResults: undefined });
               }}
-              className="px-4 py-2 text-sm border border-border rounded-lg hover:bg-white/5 transition"
+              className="px-4 sm:px-6 py-2 sm:py-3 text-sm sm:text-base border border-border rounded-lg hover:bg-white/5 transition"
             >
               Back to Selection
             </button>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-6 mb-6">
             {results.map((result) => (
               <div
                 key={result.imageId}
                 onClick={() => handleSelectResult(result)}
-                className="border-2 border-border rounded-xl p-4 cursor-pointer hover:border-brand-primary transition-all group"
+                className={`border-2 rounded-xl p-2 sm:p-4 cursor-pointer transition-all group ${selectedResult?.imageId === result.imageId
+                  ? 'border-brand-primary bg-brand-primary/5'
+                  : 'border-border hover:border-brand-primary'
+                  }`}
               >
                 <img
                   src={result.url}
                   alt="Generated"
                   className="w-full rounded-lg mb-3"
                 />
-                <button className="w-full px-4 py-2 bg-brand-primary text-white rounded-lg font-medium group-hover:bg-brand-primary-light transition-all">
-                  Select This
+                <button className={`w-full px-2 sm:px-4 py-1 sm:py-2 text-sm sm:text-base text-white rounded-lg font-medium transition-all ${selectedResult?.imageId === result.imageId
+                  ? 'bg-brand-primary'
+                  : 'bg-brand-primary/70 group-hover:bg-brand-primary'
+                  }`}>
+                  {selectedResult?.imageId === result.imageId ? 'Selected ✓' : 'Select'}
                 </button>
               </div>
             ))}
@@ -383,35 +440,9 @@ export default function Step2TemplateSelection() {
       ) : (
         <>
           {/* Filters */}
-          <div className="flex flex-col md:flex-row justify-end items-start md:items-center gap-4 mb-6">
-
-            <div className="flex flex-col sm:flex-row gap-3">
-              <Select
-                value={loadingFilters ? "" : selectedGender}
-                disabled={loadingFilters}
-                onValueChange={(value) => {
-                  setSelectedGender(value);
-                  fetchFilteredAvatars(value, selectedEthnicity, selectedCategory);
-                }}
-              >
-                <SelectTrigger className="w-[180px] disabled:opacity-60 relative overflow-hidden">
-                  <SelectValue
-                    placeholder={loadingFilters ? "Loading..." : "Gender"}
-                  />
-                  {loadingFilters && (
-                    <div className="absolute inset-0 shimmer" />
-                  )}
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Genders</SelectItem>
-                  {genderList.map((gender) => (
-                    <SelectItem key={gender} value={gender}>
-                      {gender.charAt(0).toUpperCase() + gender.slice(1)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
+          <div className="flex flex-col sm:flex-row justify-end items-start sm:items-center gap-3 sm:gap-4 mb-6">
+            <div className="flex flex-wrap gap-2 overflow-x-auto pb-2 sm:pb-0">
+              
               <Select
                 value={loadingFilters ? "" : selectedEthnicity}
                 disabled={loadingFilters}
@@ -420,7 +451,7 @@ export default function Step2TemplateSelection() {
                   fetchFilteredAvatars(selectedGender, value, selectedCategory);
                 }}
               >
-                <SelectTrigger className="w-[180px] disabled:opacity-60 relative overflow-hidden">
+                <SelectTrigger className="w-[140px] disabled:opacity-60 relative overflow-hidden">
                   <SelectValue
                     placeholder={loadingFilters ? "Loading..." : "Ethnicity"}
                   />
@@ -446,7 +477,7 @@ export default function Step2TemplateSelection() {
                   fetchFilteredAvatars(selectedGender, selectedEthnicity, value);
                 }}
               >
-                <SelectTrigger className="w-[180px] disabled:opacity-60 relative overflow-hidden">
+                <SelectTrigger className="w-[140px] disabled:opacity-60 relative overflow-hidden">
                   <SelectValue
                     placeholder={loadingFilters ? "Loading..." : "Category"}
                   />
@@ -463,159 +494,179 @@ export default function Step2TemplateSelection() {
                   ))}
                 </SelectContent>
               </Select>
+
+              <Select
+                value={loadingFilters ? "" : selectedGender}
+                disabled={loadingFilters}
+                onValueChange={(value) => {
+                  setSelectedGender(value);
+                  fetchFilteredAvatars(value, selectedEthnicity, selectedCategory);
+                }}
+              >
+                <SelectTrigger className="w-[140px] disabled:opacity-60 relative overflow-hidden">
+                  <SelectValue
+                    placeholder={loadingFilters ? "Loading..." : "Gender"}
+                  />
+                  {loadingFilters && (
+                    <div className="absolute inset-0 shimmer" />
+                  )}
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Genders</SelectItem>
+                  {genderList.map((gender) => (
+                    <SelectItem key={gender} value={gender}>
+                      {gender.charAt(0).toUpperCase() + gender.slice(1)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
             </div>
           </div>
 
           {/* Avatar Grid */}
-          <div className="relative">
-            {totalPages > 1 && (
-              <button
-                className="absolute -left-2 top-1/2 -translate-y-1/2 bg-card border border-border p-2 rounded-full hover:bg-sidebar-accent transition z-10 disabled:opacity-30"
-                disabled={currentPage === 1}
-                onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-              >
-                <ChevronLeft className="w-5 h-5" />
-              </button>
-            )}
-
-            {totalPages > 1 && (
-              <button
-                className="absolute -right-2 top-1/2 -translate-y-1/2 bg-card border border-border p-2 rounded-full hover:bg-sidebar-accent transition z-10 disabled:opacity-30"
-                disabled={currentPage === totalPages}
-                onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
-              >
-                <ChevronRight className="w-5 h-5" />
-              </button>
-            )}
-
-            <div
-              ref={gridRef}
-              className={cn(
-                "grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 transition-all duration-300 min-h-[400px]"
+          <div ref={gridRef} className="space-y-6">
+            <div className="relative">
+              {totalPages > 1 && (
+                <button
+                  className="absolute -left-1 sm:-left-2 top-1/2 -translate-y-1/2 bg-card border border-border p-1.5 sm:p-2 rounded-full hover:bg-sidebar-accent transition z-10 disabled:opacity-30"
+                  disabled={currentPage === 1}
+                  onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                >
+                  <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" />
+                </button>
               )}
-            >
-              {loading
-                ? [...Array(15)].map((_, idx) => (
-                  <div
-                    key={idx}
-                    className="h-[260px] bg-sidebar rounded-xl overflow-hidden relative"
-                  >
-                    <div className="shimmer" />
-                  </div>
-                ))
-                : currentAvatars.length === 0
-                  ? (
-                    <div className="col-span-full flex flex-col items-center justify-center py-16 px-4 text-center">
-                      <div className="w-16 h-16 rounded-full bg-muted/20 flex items-center justify-center mb-4">
-                        <svg className="w-8 h-8 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
-                        </svg>
-                      </div>
-                      <h3 className="text-lg font-semibold text-foreground mb-2">No Avatars Found</h3>
-                      <p className="text-sm text-muted-foreground max-w-md">
-                        {selectedGender !== "all" || selectedEthnicity !== "all" || selectedCategory !== "all"
-                          ? "No avatars match your current filters. Try adjusting your selection."
-                          : "No avatars are currently available. Please try again later."}
-                      </p>
-                      {(selectedGender !== "all" || selectedEthnicity !== "all" || selectedCategory !== "all") && (
-                        <button
-                          onClick={() => {
-                            setSelectedGender("all");
-                            setSelectedEthnicity("all");
-                            setSelectedCategory("all");
-                            fetchFilteredAvatars("all", "all", "all");
-                          }}
-                          className="mt-4 px-4 py-2 text-sm bg-brand-primary text-white rounded-lg hover:bg-brand-primary-light transition"
-                        >
-                          Clear Filters
-                        </button>
-                      )}
-                    </div>
-                  )
-                  : currentAvatars.map((avatar) => (
+
+              {totalPages > 1 && (
+                <button
+                  className="absolute -right-1 sm:-right-2 top-1/2 -translate-y-1/2 bg-card border border-border p-1.5 sm:p-2 rounded-full hover:bg-sidebar-accent transition z-10 disabled:opacity-30"
+                  disabled={currentPage === totalPages}
+                  onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                >
+                  <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
+                </button>
+              )}
+
+              <div
+                ref={gridRef}
+                className={cn(
+                  "grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 transition-all duration-300 min-h-[400px]"
+                )}
+              >
+                {loading
+                  ? [...Array(15)].map((_, idx) => (
                     <div
-                      key={avatar.avatarId}
-                      className={`relative group cursor-pointer rounded-xl overflow-hidden border-2 transition-all duration-200 h-[260px]
-                        ${selectedAvatar?.avatarId === avatar.avatarId
-                          ? "border-brand-primary shadow-lg shadow-brand-primary/20 scale-105"
-                          : "border-transparent hover:border-brand-primary/50 hover:shadow-md"
-                        }`}
-                      onClick={() => {
-                        setSelectedAvatar(avatar);
-                        // Persist avatar selection
-                        setWorkflowData({ selectedAvatarId: avatar.avatarId });
-                      }}
+                      key={idx}
+                      className="h-[260px] bg-sidebar rounded-xl overflow-hidden relative"
                     >
-                      <img
-                        src={avatar.avatarImagePath}
-                        alt={`Avatar ${avatar.avatarId}`}
-                        className="absolute inset-0 w-full h-full object-cover"
-                      />
-
-                      <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/80 to-transparent">
-                        <p className="text-white text-sm font-medium truncate">
-                          {avatar.avatarCategoryList[0]?.categoryName || 'Avatar'}
-                        </p>
-                      </div>
+                      <div className="shimmer" />
                     </div>
-                  ))}
-            </div>
-          </div>
+                  ))
+                  : currentAvatars.length === 0
+                    ? (
+                      <div className="col-span-full flex flex-col items-center justify-center py-16 px-4 text-center">
+                        <div className="w-16 h-16 rounded-full bg-muted/20 flex items-center justify-center mb-4">
+                          <svg className="w-8 h-8 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+                          </svg>
+                        </div>
+                        <h3 className="text-lg font-semibold text-foreground mb-2">No Avatars Found</h3>
+                        <p className="text-sm text-muted-foreground max-w-md">
+                          {selectedGender !== "all" || selectedEthnicity !== "all" || selectedCategory !== "all"
+                            ? "No avatars match your current filters. Try adjusting your selection."
+                            : "No avatars are currently available. Please try again later."}
+                        </p>
+                        {(selectedGender !== "all" || selectedEthnicity !== "all" || selectedCategory !== "all") && (
+                          <button
+                            onClick={() => {
+                              setSelectedGender("all");
+                              setSelectedEthnicity("all");
+                              setSelectedCategory("all");
+                              fetchFilteredAvatars("all", "all", "all");
+                            }}
+                            className="mt-4 px-4 py-2 text-sm bg-brand-primary text-white rounded-lg hover:bg-brand-primary-light transition"
+                          >
+                            Clear Filters
+                          </button>
+                        )}
+                      </div>
+                    )
+                    : currentAvatars.map((avatar) => (
+                      <AvatarCard
+                        key={avatar.avatarId}
+                        avatar={avatar}
+                        isSelected={selectedAvatar?.avatarId === avatar.avatarId}
+                        onSelect={(avatar) => {
+                          setSelectedAvatar(avatar);
+                          setWorkflowData({ selectedAvatarId: avatar.avatarId });
+                        }}
+                      />
+                    ))}
+              </div>
+            </div >
 
-          {/* Dot Pagination */}
-          {totalPages > 1 && (
-            <div className="flex justify-center gap-2 mt-6">
-              {(() => {
-                const DOT_WINDOW = 6;
-                let start = Math.max(1, currentPage - Math.floor(DOT_WINDOW / 2));
-                const end = Math.min(totalPages, start + DOT_WINDOW - 1);
+            {/* Dot Pagination */}
+            {
+              totalPages > 1 && (
+                <div className="flex justify-center gap-2 mt-6">
+                  {(() => {
+                    const DOT_WINDOW = 6;
+                    let start = Math.max(1, currentPage - Math.floor(DOT_WINDOW / 2));
+                    const end = Math.min(totalPages, start + DOT_WINDOW - 1);
 
-                if (end - start < DOT_WINDOW - 1) start = Math.max(1, end - DOT_WINDOW + 1);
+                    if (end - start < DOT_WINDOW - 1) start = Math.max(1, end - DOT_WINDOW + 1);
 
-                return [...Array(end - start + 1)].map((_, idx) => {
-                  const page = start + idx;
-                  return (
-                    <div
-                      key={page}
-                      onClick={() => setCurrentPage(page)}
-                      className={cn(
-                        "w-3 h-3 rounded-full cursor-pointer transition-all",
-                        page === currentPage
-                          ? "bg-brand-primary scale-110"
-                          : "bg-border hover:bg-border/70"
-                      )}
-                    ></div>
-                  );
-                });
-              })()}
-            </div>
-          )}
-
-          {/* Submit Button */}
-          <div className="flex items-center justify-between">
-            <button
-              onClick={previousStep}
-              disabled={processing}
-              className="mt-6 px-6 py-3 rounded-lg border border-border text-sm text-foreground hover:bg-white/5 transition disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Back
-            </button>
-            <button
-              onClick={handleSubmit}
-              disabled={!selectedAvatar || processing}
-              className=" mt-6 px-6 py-3 bg-brand-primary text-white rounded-lg font-semibold hover:bg-brand-primary-light transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-            >
-              {processing && <Loader2 className="w-5 h-5 animate-spin" />}
-              {processing ? "Processing..." : "Generate Images"}
-            </button>
+                    return [...Array(end - start + 1)].map((_, idx) => {
+                      const page = start + idx;
+                      return (
+                        <div
+                          key={page}
+                          onClick={() => setCurrentPage(page)}
+                          className={cn(
+                            "w-3 h-3 rounded-full cursor-pointer transition-all",
+                            page === currentPage
+                              ? "bg-brand-primary scale-110"
+                              : "bg-border hover:bg-border/70"
+                          )}
+                        ></div>
+                      );
+                    });
+                  })()}
+                </div>
+              )
+            }
           </div>
         </>
       )}
 
+      {/* Submit Button */}
+      <div className="flex items-center justify-between mt-4 sm:mt-6">
+        {!loading && (
+          <button
+            onClick={previousStep}
+            disabled={processing}
+            className="px-4 sm:px-6 py-2 sm:py-3 text-sm sm:text-base rounded-lg border border-border text-foreground hover:bg-white/5 transition disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Back
+          </button>
+        )}
+        <button
+          onClick={results ? handleConfigureVideo : handleSubmit}
+          disabled={results ? !selectedResult : (!selectedAvatar || processing)}
+          className={`px-4 sm:px-6 py-2 sm:py-3 text-sm sm:text-base bg-brand-primary text-white rounded-lg font-semibold hover:bg-brand-primary/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1 sm:gap-2 ${loading ? 'ml-auto' : ''
+            }`}
+        >
+          {processing && <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" />}
+          {results
+            ? "Configure Video"
+            : (processing ? "Processing..." : "Generate Images")
+          }
+        </button>
+      </div>
+
       <style>{`
         .fade-slide {
           opacity: 0;
-          transform: translateY(10px);
         }
         
         @keyframes shimmer {

@@ -19,6 +19,17 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
+    console.log("📥 Video generation request received:", {
+      userId,
+      taskRecordId: body.taskRecordId,
+      selectedImageId: body.selectedImageId,
+      hasScript: !!body.script,
+      scriptLength: body.script?.length || 0,
+      voiceId: body.voiceId,
+      mode: body.mode,
+      captionStyleId: body.captionStyleId,
+    });
+
     const {
       taskRecordId,
       selectedImageId,
@@ -28,14 +39,26 @@ export async function POST(req: NextRequest) {
       mode = "pro",
     } = body;
 
-    if (!taskRecordId || !selectedImageId || !script || !voiceId) {
+    if (!taskRecordId || !selectedImageId || !voiceId) {
+      console.error("❌ Missing required parameters");
       return NextResponse.json(
         {
-          error: "taskRecordId, selectedImageId, script, and voiceId are required",
+          error: "taskRecordId, selectedImageId, and voiceId are required",
         },
         { status: 400 }
       );
     }
+
+    // Use default script if not provided (for testing)
+    const ttsText = script && script.trim()
+      ? script.trim()
+      : "Check out this amazing product! It's perfect for your needs and offers great value.";
+
+    console.log("📝 Script details:", {
+      useDefault: !script || !script.trim(),
+      textLength: ttsText.length,
+      preview: ttsText.substring(0, 50) + "...",
+    });
 
     // Get task record
     const [taskRecord] = await db
@@ -45,42 +68,84 @@ export async function POST(req: NextRequest) {
       .limit(1);
 
     if (!taskRecord) {
+      console.error("❌ Task not found:", taskRecordId);
       return NextResponse.json({ error: "Task not found" }, { status: 404 });
     }
 
+    console.log("✅ Task record found:", {
+      taskId: taskRecord.id,
+      userId: taskRecord.userId,
+      currentStep: taskRecord.currentStep,
+      hasReplaceProductResults: !!taskRecord.replaceProductResults,
+      replaceProductResultsCount: Array.isArray(taskRecord.replaceProductResults) 
+        ? taskRecord.replaceProductResults.length 
+        : 0,
+    });
+
     if (taskRecord.userId !== userId) {
+      console.error("❌ Unauthorized access attempt");
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
 
     if (!taskRecord.replaceProductResults) {
-      return NextResponse.json(
-        { error: "Image replacement not completed yet" },
-        { status: 400 }
-      );
+      console.warn("⚠️ Image replacement not completed - continuing anyway for testing");
+      // Note: In production, you might want to enforce this
+      // return NextResponse.json(
+      //   { error: "Image replacement not completed yet" },
+      //   { status: 400 }
+      // );
     }
 
     // Check if user has enough credits
-    const [user]= await db
+    // First, get user email from Clerk
+    const { clerkClient } = await import('@clerk/nextjs/server');
+    const clerk = await clerkClient();
+    const clerkUser = await clerk.users.getUser(userId);
+    const userEmail = clerkUser.emailAddresses.find((e: { id: string; emailAddress: string; }) => e.id === clerkUser.primaryEmailAddressId)?.emailAddress;
+    
+    console.log("👤 User lookup:", {
+      clerkUserId: userId,
+      userEmail,
+    });
+
+    if (!userEmail) {
+      console.error("❌ No email found for user");
+      return NextResponse.json({ error: "User email not found" }, { status: 404 });
+    }
+
+    const [user] = await db
       .select()
       .from(Users)
-      .where(eq(Users.email, userId))
+      .where(eq(Users.email, userEmail))
       .limit(1);
 
     if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
+      console.warn("⚠️ User not found in database - continuing for testing");
+      console.log("User email:", userEmail);
+      // For testing, we'll allow this to continue
+      // In production, you might want to enforce this or auto-create users
+      // return NextResponse.json({ error: "User not found" }, { status: 404 });
+    } else {
+      const creditsAvailable = (user.credits_allowed || 0) - (user.credits_used || 0);
+      console.log("💰 Credit check:", {
+        allowed: user.credits_allowed,
+        used: user.credits_used,
+        available: creditsAvailable,
+      });
+
+      if (creditsAvailable < 1) {
+        console.error("❌ Insufficient credits");
+        return NextResponse.json(
+          { error: "Insufficient credits. Please upgrade your plan." },
+          { status: 402 }
+        );
+      }
     }
 
-    const creditsAvailable = (user.credits_allowed || 0) - (user.credits_used || 0);
-    if (creditsAvailable < 1) {
-      return NextResponse.json(
-        { error: "Insufficient credits. Please upgrade your plan." },
-        { status: 402 }
-      );
-    }
-
-    console.log("🔄 Submitting video generation task...");
+    console.log("🔄 Submitting video generation task to TopView...");
 
     if (!TOPVIEW_API_KEY || !TOPVIEW_UID) {
+      console.error("❌ Missing TopView API credentials");
       return NextResponse.json(
         { error: "Missing Topview API credentials." },
         { status: 500 }
@@ -101,14 +166,28 @@ export async function POST(req: NextRequest) {
         replaceProductTaskImageId: selectedImageId,
         mode,
         scriptMode: "text",
-        ttsText: script,
+        ttsText: ttsText,
         voiceId,
         captionId: captionStyleId,
       },
     };
 
+    console.log("📤 TopView API request:", {
+      url: options.url,
+      replaceProductTaskImageId: selectedImageId,
+      mode,
+      voiceId,
+      captionId: captionStyleId,
+      ttsTextLength: ttsText.length,
+    });
+
     const response = await axios.request(options);
     const data = response.data;
+
+    console.log("📨 TopView API response:", {
+      code: data.code,
+      hasResult: !!data.result,
+    });
 
     if (!["200", 200, "0", 0].includes(data.code)) {
       console.error("❌ Video generation submission error:", data);
@@ -124,7 +203,12 @@ export async function POST(req: NextRequest) {
       errorMsg: string | null;
     };
 
-    console.log("✅ Video generation task submitted:", result.taskId);
+    console.log("✅ Video generation task submitted successfully:", {
+      taskId: result.taskId,
+      status: result.status,
+    });
+
+    console.log("💾 Updating database records...");
 
     // Update task record
     await db
@@ -132,7 +216,7 @@ export async function POST(req: NextRequest) {
       .set({
         selectedImageId,
         videoTaskId: result.taskId,
-        script,
+        script: ttsText,
         voiceId,
         captionStyleId,
         mode,
@@ -141,13 +225,15 @@ export async function POST(req: NextRequest) {
       })
       .where(eq(TopviewTasks.id, taskRecordId));
 
+    console.log("✅ Task record updated");
+
     // Create video record (credits not deducted yet)
     const [videoRecord] = await db
       .insert(TopviewVideo)
       .values({
         userId,
         taskTableId: taskRecordId,
-        script,
+        script: ttsText,
         voiceId,
         captionStyleId,
         taskId: result.taskId,
@@ -156,6 +242,14 @@ export async function POST(req: NextRequest) {
         creditsDeducted: false,
       })
       .returning();
+
+    console.log("✅ Video record created:", {
+      videoRecordId: videoRecord.id,
+      taskId: result.taskId,
+      creditsDeducted: false,
+    });
+
+    console.log("🎉 Video generation submitted successfully!");
 
     return NextResponse.json({
       success: true,

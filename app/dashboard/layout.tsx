@@ -1,10 +1,10 @@
 "use client";
 
 import { UserButton } from "@clerk/nextjs";
-import { LayoutDashboard, Video, CreditCard, Settings, Sparkles } from "lucide-react";
+import { LayoutDashboard, Video, CreditCard, Settings, Sparkles, Menu, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ReactNode } from "react";
+import { ReactNode, useState } from "react";
 
 const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
@@ -16,13 +16,29 @@ const navigation = [
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
     <div className="flex h-screen bg-background">
+      {/* Mobile Sidebar Backdrop */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-40 md:hidden backdrop-blur"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
       {/* Sidebar */}
-      <aside className="w-64 bg-sidebar border-r border-sidebar-border flex flex-col">
+      <aside
+        className={`
+          fixed md:static inset-y-0 left-0 z-50
+          w-64 border-r border-sidebar-border flex flex-col
+          transform transition-transform duration-300 ease-in-out
+          ${sidebarOpen ? 'translate-x-0 bg-sidebar/95 backdrop-blur-lg' : '-translate-x-full md:translate-x-0 bg-sidebar'}
+        `}
+      >
         {/* Logo/Header */}
-        <div className="h-16 flex items-center px-6 border-b border-sidebar-border">
+        <div className="h-16 flex items-center justify-between px-6 border-b border-sidebar-border">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-primary-dark to-brand-primary flex items-center justify-center">
               <Sparkles className="w-5 h-5 text-white" />
@@ -31,6 +47,14 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
               ProductHold
             </span>
           </div>
+
+          {/* Close button for mobile */}
+          <button
+            onClick={() => setSidebarOpen(false)}
+            className="md:hidden p-1 hover:bg-sidebar-accent rounded-lg transition-colors"
+          >
+            <X className="w-5 h-5 text-sidebar-foreground" />
+          </button>
         </div>
 
         {/* Navigation */}
@@ -43,12 +67,12 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
               <Link
                 key={item.name}
                 href={item.href}
+                onClick={() => setSidebarOpen(false)}
                 className={`
                   flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all
-                  ${
-                    isActive
-                      ? "bg-sidebar-accent text-sidebar-accent-foreground shadow-sm"
-                      : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
+                  ${isActive
+                    ? "bg-sidebar-accent text-sidebar-accent-foreground shadow-sm"
+                    : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
                   }
                 `}
               >
@@ -62,7 +86,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         {/* User Profile */}
         <div className="p-4 border-t border-sidebar-border">
           <div className="flex items-center gap-3">
-            <UserButton 
+            <UserButton
               appearance={{
                 elements: {
                   avatarBox: "w-10 h-10"
@@ -84,25 +108,33 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Top Header */}
-        <header className="h-16 bg-card border-b border-border flex items-center justify-between px-6">
-          <div>
+        <header className="h-16 bg-card border-b border-border flex items-center justify-between px-4 md:px-6">
+          <div className="flex items-center gap-3">
+            {/* Hamburger Menu Button - Mobile Only */}
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className="md:hidden p-2 hover:bg-sidebar-accent rounded-lg transition-colors"
+            >
+              <Menu className="w-5 h-5 text-foreground" />
+            </button>
+
             <h1 className="text-xl font-semibold text-foreground">
               Dashboard
             </h1>
           </div>
-          
+
           {/* Credit Display & User Button */}
-          <div className="flex items-center gap-4">
-            <div className="px-4 py-2 rounded-lg bg-sidebar-accent border border-border">
+          <div className="flex items-center gap-2 md:gap-4">
+            <div className="px-3 md:px-4 py-2 rounded-lg bg-sidebar-accent border border-border">
               <div className="flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-brand-primary" />
-                <span className="text-sm font-medium text-foreground">
-                  <span className="text-brand-primary">10</span> / 100 Credits
+                <span className="text-xs md:text-sm font-medium text-foreground">
+                  <span className="text-brand-primary">10</span> / <span className="hidden sm:inline">100 </span>Credits
                 </span>
               </div>
             </div>
-            
-            <UserButton 
+
+            <UserButton
               appearance={{
                 elements: {
                   avatarBox: "w-9 h-9",
@@ -117,7 +149,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         </header>
 
         {/* Page Content */}
-        <main className="flex-1 overflow-y-auto p-6">
+        <main className="flex-1 overflow-y-auto p-4 md:p-6">
           {children}
         </main>
       </div>

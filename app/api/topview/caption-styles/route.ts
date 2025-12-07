@@ -3,7 +3,7 @@ import axios from "axios";
 
 const TOPVIEW_API_KEY = process.env.TOPVIEW_API_KEY!;
 const TOPVIEW_UID = process.env.TOPVIEW_UID!;
-const BASE_URL = process.env.TOPVIEW_BASE_URL || "https://api.topview.ai/v1";
+const BASE_URL = process.env.TOPVIEW_BASE_URL!;
 
 export async function GET() {
   try {
@@ -16,7 +16,7 @@ export async function GET() {
       );
     }
 
-    const response = await axios.get(`${BASE_URL}/caption/list`, {
+    const response = await axios.get(`${BASE_URL}/v1/caption/list`, {
       headers: {
         Authorization: `Bearer ${TOPVIEW_API_KEY}`,
         "Topview-Uid": TOPVIEW_UID,

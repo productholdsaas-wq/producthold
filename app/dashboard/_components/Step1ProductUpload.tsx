@@ -14,6 +14,61 @@ interface ScrapedImage {
   fileUrl: string;
 }
 
+// Image card component with loading state
+function ImageCard({ image, isSelected, isProcessing, onClick }: {
+  image: ScrapedImage;
+  isSelected: boolean;
+  isProcessing: boolean;
+  onClick: () => void;
+}) {
+  const [imageLoaded, setImageLoaded] = useState(false);
+
+  return (
+    <div
+      onClick={onClick}
+      className={`relative cursor-pointer rounded-lg overflow-hidden border-2 transition-all hover:scale-105 h-[120px] ${isSelected
+        ? "border-brand-primary shadow-xl shadow-brand-primary/40 scale-105"
+        : "border-border hover:border-brand-primary/50 hover:shadow-lg"
+        } ${isProcessing ? "pointer-events-none" : ""}`}
+    >
+      {/* Image with shimmer loading */}
+      <div className="relative w-full h-full">
+        <img
+          src={image.fileUrl}
+          alt={image.fileName}
+          className={`w-full h-full object-cover transition-opacity duration-300 ${imageLoaded ? 'opacity-100' : 'opacity-0'
+            }`}
+          onLoad={() => setImageLoaded(true)}
+          onError={() => setImageLoaded(true)}
+        />
+        {/* Shimmer effect while loading */}
+        {!imageLoaded && (
+          <div className="absolute inset-0 bg-sidebar">
+            <div className="shimmer" />
+          </div>
+        )}
+      </div>
+
+      {/* Processing overlay */}
+      {isProcessing && (
+        <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center gap-2">
+          <Loader2 className="w-6 h-6 text-white animate-spin" />
+          <span className="text-xs text-white font-medium">Processing...</span>
+        </div>
+      )}
+
+      {/* Selected checkmark */}
+      {!isProcessing && isSelected && (
+        <div className="absolute inset-0 bg-brand-primary/20 flex items-center justify-center">
+          <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+          </svg>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function Step1ProductUpload() {
   const { workflowData, setWorkflowData, nextStep, setError } = useVideoCreator();
 
@@ -28,7 +83,12 @@ export default function Step1ProductUpload() {
   const [productName, setProductName] = useState("");
   const [fetchingUrl, setFetchingUrl] = useState(false);
   const [scrapedImages, setScrapedImages] = useState<ScrapedImage[]>([]);
-  const [selectedScrapedImage, setSelectedScrapedImage] = useState<ScrapedImage | null>(null);
+  const [selectedScrapedImage, setSelectedScrapedImage] = useState<{
+    fileId: string;
+    fileName: string;
+    fileUrl: string;
+  } | null>(null);
+  const [imageLoaded, setImageLoaded] = useState(false);
 
   // Check if we already have completed data and restore previous state
   useEffect(() => {
@@ -40,6 +100,7 @@ export default function Step1ProductUpload() {
     if (workflowData.bgRemovedImageUrl && workflowData.taskRecordId) {
       setPreview(workflowData.bgRemovedImageUrl);
       setIsCompleted(true);
+      setImageLoaded(true); // Image already loaded from context
       if (workflowData.productName) {
         setProductName(workflowData.productName);
       }
@@ -59,12 +120,6 @@ export default function Step1ProductUpload() {
   }, []);
 
   const handleFetchUrl = async () => {
-    if (!productUrl.trim()) {
-      setError("Please enter a product URL");
-      toast.error("Please enter a product URL");
-      return;
-    }
-
     const loadingToast = toast.loading("Fetching product data...");
     setFetchingUrl(true);
     setError(null);
@@ -275,6 +330,7 @@ export default function Step1ProductUpload() {
             productName: productName || undefined,
           });
 
+          setImageLoaded(false); // Start loading animation
           setPreview(data.bgRemovedImageUrl);
           toast.success("Background removed successfully!", { id: toastId });
         } else if (attempts < maxAttempts) {
@@ -309,29 +365,29 @@ export default function Step1ProductUpload() {
   });
 
   return (
-    <div className="bg-card border border-border rounded-xl p-8">
-      <h2 className="text-2xl font-bold text-foreground mb-2">
+    <div className="bg-card border border-border rounded-xl p-4 sm:p-8">
+      <h2 className="text-xl sm:text-2xl font-bold text-foreground mb-2">
         Upload Product Image
       </h2>
-      <p className="text-muted-foreground mb-8">
+      <p className="text-sm sm:text-base text-muted-foreground mb-4 sm:mb-8">
         Fetch product images from URL or upload your own
       </p>
 
       {/* Premium Tabs */}
-      <div className="flex gap-3 mb-8 p-1 bg-sidebar rounded-lg">
+      <div className="flex gap-2 sm:gap-3 mb-4 sm:mb-8 p-1 bg-sidebar rounded-lg">
         <button
           onClick={() => {
             setActiveTab("url");
             setWorkflowData({ activeTab: "url" });
           }}
-          className={`flex-1 px-6 py-3 font-medium rounded-md transition-all ${activeTab === "url"
+          className={`flex-1 px-3 sm:px-6 py-2 sm:py-3 font-medium rounded-md transition-all ${activeTab === "url"
             ? "bg-gradient-to-r from-brand-primary to-brand-primary-light text-white shadow-lg shadow-brand-primary/30"
             : "text-muted-foreground hover:text-foreground hover:bg-sidebar-accent"
             }`}
         >
-          <div className="flex items-center justify-center gap-2">
-            <LinkIcon className="w-5 h-5" />
-            <span>Product URL</span>
+          <div className="flex items-center justify-center gap-1 sm:gap-2">
+            <LinkIcon className="w-4 h-4 sm:w-5 sm:h-5" />
+            <span className="text-sm sm:text-base">Product URL</span>
           </div>
         </button>
         <button
@@ -339,36 +395,36 @@ export default function Step1ProductUpload() {
             setActiveTab("upload");
             setWorkflowData({ activeTab: "upload" });
           }}
-          className={`flex-1 px-6 py-3 font-medium rounded-md transition-all ${activeTab === "upload"
+          className={`flex-1 px-3 sm:px-6 py-2 sm:py-3 font-medium rounded-md transition-all ${activeTab === "upload"
             ? "bg-gradient-to-r from-brand-primary to-brand-primary-light text-white shadow-lg shadow-brand-primary/30"
             : "text-muted-foreground hover:text-foreground hover:bg-sidebar-accent"
             }`}
         >
-          <div className="flex items-center justify-center gap-2">
-            <ImageIcon className="w-5 h-5" />
-            <span>Upload Image</span>
+          <div className="flex items-center justify-center gap-1 sm:gap-2">
+            <ImageIcon className="w-4 h-4 sm:w-5 sm:h-5" />
+            <span className="text-sm sm:text-base">Upload Image</span>
           </div>
         </button>
       </div>
 
       {/* URL Tab Content */}
       {activeTab === "url" && (
-        <div className="space-y-6">
-          <div className="flex gap-3">
+        <div className="space-y-3 sm:space-y-6">
+          <div className="flex gap-1 sm:gap-3">
             <input
               type="url"
               value={productUrl}
               onChange={(e) => setProductUrl(e.target.value)}
               placeholder="Paste product URL (Amazon, etc.)..."
-              className="flex-1 px-4 py-3 bg-sidebar border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:border-brand-primary focus:outline-none focus:ring-2 focus:ring-brand-primary/20 transition-all"
+              className="flex-1 px-3 sm:px-4 py-2 sm:py-3 text-sm sm:text-base bg-sidebar border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:border-brand-primary focus:outline-none focus:ring-2 focus:ring-brand-primary/20 transition-all"
               disabled={fetchingUrl}
             />
             <button
               onClick={handleFetchUrl}
               disabled={fetchingUrl || !productUrl.trim()}
-              className="px-8 py-3 btn-primary rounded-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              className="px-4 sm:px-8 py-2 sm:py-3 text-sm sm:text-base bg-brand-primary rounded-lg disabled:bg-brand-primary/50 disabled:cursor-not-allowed flex items-center gap-2"
             >
-              {fetchingUrl && <Loader2 className="w-5 h-5 animate-spin" />}
+              {fetchingUrl && <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" />}
               {fetchingUrl ? "Fetching..." : "Fetch"}
             </button>
           </div>
@@ -379,35 +435,15 @@ export default function Step1ProductUpload() {
               <p className="text-sm font-semibold text-foreground mb-4">
                 Select a product image:
               </p>
-              <div className="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3">
+              <div className="grid grid-cols-2 md:grid-cols-6 lg:grid-cols-8 gap-3">
                 {scrapedImages.map((image) => (
-                  <div
+                  <ImageCard
                     key={image.fileId}
+                    image={image}
+                    isSelected={selectedScrapedImage?.fileId === image.fileId}
+                    isProcessing={processing && selectedScrapedImage?.fileId === image.fileId}
                     onClick={() => !processing && handleSelectScrapedImage(image)}
-                    className={`relative cursor-pointer rounded-lg overflow-hidden border-2 transition-all hover:scale-105 h-[120px] ${selectedScrapedImage?.fileId === image.fileId
-                      ? "border-brand-primary shadow-xl shadow-brand-primary/40 scale-105"
-                      : "border-border hover:border-brand-primary/50 hover:shadow-lg"
-                      } ${processing && selectedScrapedImage?.fileId === image.fileId ? "pointer-events-none" : ""}`}
-                  >
-                    <img
-                      src={image.fileUrl}
-                      alt={image.fileName}
-                      className="w-full h-full object-cover"
-                    />
-                    {processing && selectedScrapedImage?.fileId === image.fileId && (
-                      <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center gap-2">
-                        <Loader2 className="w-6 h-6 text-white animate-spin" />
-                        <span className="text-xs text-white font-medium">Processing...</span>
-                      </div>
-                    )}
-                    {!processing && selectedScrapedImage?.fileId === image.fileId && (
-                      <div className="absolute inset-0 bg-brand-primary/20 flex items-center justify-center">
-                        <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                        </svg>
-                      </div>
-                    )}
-                  </div>
+                  />
                 ))}
               </div>
             </div>
@@ -447,17 +483,17 @@ export default function Step1ProductUpload() {
             <input {...getInputProps()} />
 
             {!preview && !uploading && (
-              <div className="space-y-4">
-                <div className="w-20 h-20 rounded-full bg-gradient-to-br from-brand-primary/20 to-brand-primary-light/20 flex items-center justify-center mx-auto">
-                  <Upload className="w-10 h-10 text-brand-primary" />
+              <div className="space-y-3 sm:space-y-4">
+                <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-gradient-to-br from-brand-primary/20 to-brand-primary-light/20 flex items-center justify-center mx-auto">
+                  <Upload className="w-8 h-8 sm:w-10 sm:h-10 text-brand-primary" />
                 </div>
                 <div>
-                  <p className="text-foreground font-semibold mb-1 text-lg">
+                  <p className="text-foreground font-semibold mb-1 text-base sm:text-lg">
                     {isDragActive
                       ? "Drop your image here"
                       : "Drag & drop or click to upload"}
                   </p>
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-xs sm:text-sm text-muted-foreground">
                     PNG, JPG, JPEG or WEBP (max 10MB)
                   </p>
                 </div>
@@ -465,35 +501,50 @@ export default function Step1ProductUpload() {
             )}
 
             {uploading && !preview && (
-              <div className="space-y-4">
-                <div className="w-20 h-20 rounded-full bg-gradient-to-br from-brand-primary/20 to-brand-primary-light/20 flex items-center justify-center mx-auto">
-                  <Loader2 className="w-10 h-10 text-brand-primary animate-spin" />
+              <div className="space-y-3 sm:space-y-4">
+                <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-gradient-to-br from-brand-primary/20 to-brand-primary-light/20 flex items-center justify-center mx-auto">
+                  <Loader2 className="w-8 h-8 sm:w-10 sm:h-10 text-brand-primary animate-spin" />
                 </div>
                 <div>
-                  <p className="text-foreground font-semibold mb-1 text-lg">
+                  <p className="text-foreground font-semibold mb-1 text-base sm:text-lg">
                     Uploading your image...
                   </p>
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-xs sm:text-sm text-muted-foreground">
                     Please wait while we process your file
                   </p>
                 </div>
               </div>
             )}
 
+            {/* Processing shimmer */}
+            {processing && !preview && (
+              <div className="space-y-3 sm:space-y-4">
+                <div className="max-h-48 h-48 sm:max-h-64 sm:h-64 bg-sidebar border border-border rounded-lg relative overflow-hidden mx-auto">
+                  <div className="absolute inset-0 shimmer" />
+                </div>
+                <p className="text-center text-xs sm:text-sm text-muted-foreground">
+                  Removing background...
+                </p>
+              </div>
+            )}
+
+            {/* Preview image with fade-in animation */}
             {preview && (
-              <div className="space-y-4">
+              <div className={`space-y-4 transition-all duration-500 ${imageLoaded ? 'opacity-100 scale-100' : 'opacity-0 scale-95'
+                }`}>
                 <img
                   src={preview}
                   alt="Preview"
                   className="max-h-64 mx-auto rounded-lg shadow-xl"
+                  onLoad={() => setImageLoaded(true)}
                 />
               </div>
             )}
           </div>
 
           {/* Tip - Only in Upload Tab */}
-          <div className="p-4 bg-gradient-to-r from-blue-500/10 to-purple-500/10 border border-blue-500/20 rounded-lg">
-            <p className="text-sm text-foreground">
+          <div className="p-3 sm:p-4 bg-gradient-to-r from-blue-500/10 to-purple-500/10 border border-blue-500/20 rounded-lg">
+            <p className="text-xs sm:text-sm text-foreground">
               💡 <strong>Tip:</strong> For best results, use a clear product image
               with good lighting and minimal background clutter.
             </p>
@@ -503,10 +554,10 @@ export default function Step1ProductUpload() {
 
       {/* Next Button */}
       {isCompleted && (
-        <div className="flex justify-end mt-8">
+        <div className="flex justify-end mt-6 sm:mt-8">
           <button
             onClick={handleNext}
-            className="px-8 py-3 bg-gradient-to-r from-brand-primary to-brand-primary-light text-white rounded-lg font-semibold hover:shadow-xl hover:shadow-brand-primary/40 transition-all"
+            className="px-4 sm:px-8 py-2 sm:py-3 text-sm sm:text-base bg-brand-primary hover:bg-brand-primary/90 text-white rounded-lg font-semibold hover:shadow-xl transition-all"
           >
             Continue to Choose Avatar
           </button>
@@ -516,4 +567,41 @@ export default function Step1ProductUpload() {
 
     </div>
   );
+}
+
+// Add shimmer effect styles
+if (typeof document !== 'undefined') {
+  const style = document.createElement('style');
+  style.textContent = `
+    @keyframes shimmer {
+      0% {
+        background-position: -1000px 0;
+      }
+      100% {
+        background-position: 1000px 0;
+      }
+    }
+    
+    .shimmer {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(
+        90deg,
+        rgba(255, 255, 255, 0) 0%,
+        rgba(255, 255, 255, 0.05) 20%,
+        rgba(255, 255, 255, 0.1) 50%,
+        rgba(255, 255, 255, 0.05) 80%,
+        rgba(255, 255, 255, 0) 100%
+      );
+      background-size: 1000px 100%;
+      animation: shimmer 2s infinite;
+    }
+  `;
+  if (!document.querySelector('#step1-shimmer-styles')) {
+    style.id = 'step1-shimmer-styles';
+    document.head.appendChild(style);
+  }
 }

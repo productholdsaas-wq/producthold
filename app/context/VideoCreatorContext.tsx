@@ -38,6 +38,7 @@ interface WorkflowData {
 
   // Step 3: Video Generation & Configuration
   videoRecordId?: string;
+  videoTaskId?: string; // TopView task ID for polling
   finishedVideoUrl?: string;
   script?: string;
   language?: string;

@@ -8,7 +8,7 @@ import { useVideoCreator } from "../../context/VideoCreatorContext";
 export default function VideoResult() {
   const { workflowData, resetWorkflow } = useVideoCreator();
   const [downloading, setDownloading] = useState(false);
-  
+
   const videoUrl = workflowData.finishedVideoUrl!;
 
   const handleDownload = async () => {
@@ -38,7 +38,7 @@ export default function VideoResult() {
   };
 
   return (
-    <div className="bg-card border border-border rounded-xl p-8">
+    <div className="bg-card border border-border rounded-xl p-4 sm:p-8">
       {/* Success Header */}
       <div className="text-center mb-8">
         <div className="w-16 h-16 rounded-full bg-green-500/20 border-2 border-green-500 flex items-center justify-center mx-auto mb-4">
@@ -67,30 +67,30 @@ export default function VideoResult() {
       </div>
 
       {/* Action Buttons */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4 mb-6 sm:mb-8">
         <button
           onClick={handleDownload}
-          disabled={downloading}
-          className="flex items-center justify-center gap-2 px-6 py-3 bg-brand-primary text-white rounded-lg font-semibold hover:bg-brand-primary-light transition-all disabled:opacity-50"
+          disabled={!videoUrl}
+          className="flex items-center justify-center gap-1 sm:gap-2 px-4 sm:px-6 py-2 sm:py-3 text-sm sm:text-base bg-brand-primary text-white rounded-lg font-semibold hover:bg-brand-primary-light transition-all disabled:opacity-50"
         >
-          <Download className="w-5 h-5" />
-          {downloading ? "Downloading..." : "Download Video"}
+          <Download className="w-4 h-4 sm:w-5 sm:h-5" />
+          Download
         </button>
 
         <button
           onClick={handleCopyLink}
-          className="flex items-center justify-center gap-2 px-6 py-3 bg-sidebar border border-border text-foreground rounded-lg font-semibold hover:border-brand-primary/50 transition-all"
+          className="flex items-center justify-center gap-1 sm:gap-2 px-4 sm:px-6 py-2 sm:py-3 text-sm sm:text-base bg-sidebar border border-border text-foreground rounded-lg font-semibold hover:border-brand-primary/50 transition-all"
         >
-          <Share2 className="w-5 h-5" />
+          <Share2 className="w-4 h-4 sm:w-5 sm:h-5" />
           Copy Link
         </button>
 
         <button
           onClick={resetWorkflow}
-          className="flex items-center justify-center gap-2 px-6 py-3 bg-sidebar border border-border text-foreground rounded-lg font-semibold hover:border-brand-primary/50 transition-all"
+          className="flex items-center justify-center gap-1 sm:gap-2 px-4 sm:px-6 py-2 sm:py-3 text-sm sm:text-base bg-sidebar border border-border text-foreground rounded-lg font-semibold hover:border-brand-primary/50 transition-all"
         >
-          <RotateCcw className="w-5 h-5" />
-          Create Another
+          <RotateCcw className="w-4 h-4 sm:w-5 sm:h-5" />
+          New Video
         </button>
       </div>
 
@@ -134,8 +134,8 @@ export default function VideoResult() {
       </div>
 
       {/* Tip */}
-      <div className="mt-6 p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg">
-        <p className="text-sm text-blue-400">
+      <div className="p-3 sm:p-4 mt-4 bg-gradient-to-r from-blue-500/10 to-purple-500/10 border border-blue-500/20 rounded-lg">
+        <p className="text-xs sm:text-sm text-foreground">
           💡 <strong>Tip:</strong> Share this video on your social media or use it
           in your marketing campaigns to boost engagement!
         </p>
