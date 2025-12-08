@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
     console.log("📥 Video generation request received:", {
       userId,
       taskRecordId: body.taskRecordId,
-      selectedImageId: body.selectedImageId,
+      replaceProductTaskImageId: body.replaceProductTaskImageId,
       hasScript: !!body.script,
       scriptLength: body.script?.length || 0,
       voiceId: body.voiceId,
@@ -32,30 +32,36 @@ export async function POST(req: NextRequest) {
 
     const {
       taskRecordId,
-      selectedImageId,
-      script,
+      replaceProductTaskImageId,
+      scriptMode = "text",
+      ttsText: scriptInput, // Rename incoming ttsText to scriptInput for processing
       voiceId,
       captionStyleId,
       mode = "pro",
+      aspectRatio = "9:16",
+      videoLengthType = 2,
     } = body;
+
+    // Map the new payload key to the internal variable used for DB operations
+    const selectedImageId = replaceProductTaskImageId;
 
     if (!taskRecordId || !selectedImageId || !voiceId) {
       console.error("❌ Missing required parameters");
       return NextResponse.json(
         {
-          error: "taskRecordId, selectedImageId, and voiceId are required",
+          error: "taskRecordId, replaceProductTaskImageId, and voiceId are required",
         },
         { status: 400 }
       );
     }
 
     // Use default script if not provided (for testing)
-    const ttsText = script && script.trim()
-      ? script.trim()
+    const ttsText = scriptInput && scriptInput.trim()
+      ? scriptInput.trim()
       : "Check out this amazing product! It's perfect for your needs and offers great value.";
 
     console.log("📝 Script details:", {
-      useDefault: !script || !script.trim(),
+      useDefault: !scriptInput || !scriptInput.trim(),
       textLength: ttsText.length,
       preview: ttsText.substring(0, 50) + "...",
     });
@@ -89,11 +95,6 @@ export async function POST(req: NextRequest) {
 
     if (!taskRecord.replaceProductResults) {
       console.warn("⚠️ Image replacement not completed - continuing anyway for testing");
-      // Note: In production, you might want to enforce this
-      // return NextResponse.json(
-      //   { error: "Image replacement not completed yet" },
-      //   { status: 400 }
-      // );
     }
 
     // Check if user has enough credits
@@ -121,18 +122,8 @@ export async function POST(req: NextRequest) {
 
     if (!user) {
       console.warn("⚠️ User not found in database - continuing for testing");
-      console.log("User email:", userEmail);
-      // For testing, we'll allow this to continue
-      // In production, you might want to enforce this or auto-create users
-      // return NextResponse.json({ error: "User not found" }, { status: 404 });
     } else {
       const creditsAvailable = (user.credits_allowed || 0) - (user.credits_used || 0);
-      console.log("💰 Credit check:", {
-        allowed: user.credits_allowed,
-        used: user.credits_used,
-        available: creditsAvailable,
-      });
-
       if (creditsAvailable < 1) {
         console.error("❌ Insufficient credits");
         return NextResponse.json(
@@ -165,20 +156,18 @@ export async function POST(req: NextRequest) {
       data: {
         replaceProductTaskImageId: selectedImageId,
         mode,
-        scriptMode: "text",
+        scriptMode,
         ttsText: ttsText,
         voiceId,
         captionId: captionStyleId,
+        aspectRatio,
+        videoLengthType,
       },
     };
 
     console.log("📤 TopView API request:", {
       url: options.url,
-      replaceProductTaskImageId: selectedImageId,
-      mode,
-      voiceId,
-      captionId: captionStyleId,
-      ttsTextLength: ttsText.length,
+      payload: options.data,
     });
 
     const response = await axios.request(options);

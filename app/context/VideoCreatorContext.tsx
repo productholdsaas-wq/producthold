@@ -46,7 +46,7 @@ interface WorkflowData {
   captionStyleId?: string;
   videoOrientation?: "9:16" | "16:9" | "1:1" | "4:3" | "3:4";
   videoLength?: string;
-  mode?: "pro" | "standard";
+  mode?: "pro" | "lite";
 
   // UI State Persistence
   activeTab?: "url" | "upload";  // Step 1 tab state

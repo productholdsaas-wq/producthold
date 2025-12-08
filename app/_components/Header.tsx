@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useState } from "react";
 import { Menu, X } from "lucide-react";
 import { UserButton, SignedIn, SignedOut } from "@clerk/nextjs";
@@ -22,12 +23,14 @@ export default function Header() {
                 {/* Left: Logo */}
                 <div className="flex lg:flex-1">
                     <Link href="/" className="-m-1.5 p-1.5 flex items-center gap-2">
-                        <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-brand-primary-dark to-brand-primary flex items-center justify-center text-white font-bold">
-                            P
-                        </div>
-                        <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-foreground to-foreground/70">
-                            ProductHold
-                        </span>
+                        <Image
+                            src="/Full_logo.png"
+                            alt="ProductHold Logo"
+                            width={170}
+                            height={50}
+                            className="object-contain"
+                            priority
+                        />
                     </Link>
                 </div>
 

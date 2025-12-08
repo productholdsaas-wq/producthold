@@ -120,7 +120,6 @@ export default function Step1ProductUpload() {
   }, []);
 
   const handleFetchUrl = async () => {
-    const loadingToast = toast.loading("Fetching product data...");
     setFetchingUrl(true);
     setError(null);
 
@@ -141,16 +140,16 @@ export default function Step1ProductUpload() {
       const taskId = submitData.taskId;
 
       // Poll for scraper results
-      await pollScraperTask(taskId, loadingToast);
+      await pollScraperTask(taskId);
     } catch (error) {
       setFetchingUrl(false);
       const errorMessage = error instanceof Error ? error.message : "Failed to fetch product data";
       setError(errorMessage);
-      toast.error(errorMessage, { id: loadingToast });
+      toast.error(errorMessage);
     }
   };
 
-  const pollScraperTask = async (taskId: string, toastId: string | number) => {
+  const pollScraperTask = async (taskId: string) => {
     const maxAttempts = 30;
     let attempts = 0;
 
@@ -162,7 +161,7 @@ export default function Step1ProductUpload() {
         if (data.status === "success" && data.productImages && data.productImages.length > 0) {
           setFetchingUrl(false);
           setScrapedImages(data.productImages);
-          toast.success(`Found ${data.productImages.length} product images!`, { id: toastId });
+          toast.success(`Found ${data.productImages.length} product images!`);
 
           // Save to workflow context
           setWorkflowData({
@@ -179,42 +178,50 @@ export default function Step1ProductUpload() {
           setFetchingUrl(false);
           const errorMsg = data.errorMsg || "Failed to scrape product data";
           setError(errorMsg);
-          toast.error(errorMsg, { id: toastId });
+          toast.error(errorMsg);
         } else if (attempts < maxAttempts) {
           attempts++;
           setTimeout(poll, 2000);
         } else {
           setFetchingUrl(false);
           setError("Scraping timed out. Please try again.");
-          toast.error("Scraping timed out. Please try again.", { id: toastId });
+          toast.error("Scraping timed out. Please try again.");
         }
-      } catch (error) {
+      } catch {
         setFetchingUrl(false);
         setError("Failed to check scraper status");
-        toast.error("Failed to check scraper status", { id: toastId });
+        toast.error("Failed to check scraper status");
       }
     };
 
     poll();
   };
 
-  const handleSelectScrapedImage = async (image: ScrapedImage) => {
+  const handleSelectScrapedImage = (image: ScrapedImage) => {
     setSelectedScrapedImage(image);
-    const loadingToast = toast.loading("Removing background...");
-    setProcessing(true);
+    // Reset states when selection changes
+    setIsCompleted(false);
+    setPreview(null);
     setError(null);
 
     // Save selected image to workflow context
     setWorkflowData({
       selectedScrapedImage: image,
     });
+  };
+
+  const handleRemoveBackground = async () => {
+    if (!selectedScrapedImage) return;
+
+    setProcessing(true);
+    setError(null);
 
     try {
       // Submit background removal with the scraped image fileId
       const response = await fetch("/api/topview/remove-background/submit", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ productImageFileId: image.fileId }),
+        body: JSON.stringify({ productImageFileId: selectedScrapedImage.fileId }),
       });
 
       const data = await response.json();
@@ -223,12 +230,12 @@ export default function Step1ProductUpload() {
         throw new Error(data.error || "Failed to start background removal");
       }
 
-      pollForCompletion(data.taskRecordId, loadingToast);
+      pollForCompletion(data.taskRecordId);
     } catch (error) {
       setProcessing(false);
       const errorMessage = error instanceof Error ? error.message : "Failed to process image";
       setError(errorMessage);
-      toast.error(errorMessage, { id: loadingToast });
+      toast.error(errorMessage);
     }
   };
 
@@ -245,7 +252,6 @@ export default function Step1ProductUpload() {
       reader.onload = () => setPreview(reader.result as string);
       reader.readAsDataURL(file);
 
-      const uploadToast = toast.loading("Uploading image...");
       setUploading(true);
       setError(null);
 
@@ -291,23 +297,22 @@ export default function Step1ProductUpload() {
         }
 
         setUploading(false);
-        toast.success("Image uploaded successfully!", { id: uploadToast });
+        toast.success("Image uploaded successfully!");
 
-        const bgRemovalToast = toast.loading("Removing background...");
         setProcessing(true);
 
-        pollForCompletion(data.taskRecordId, bgRemovalToast);
+        pollForCompletion(data.taskRecordId);
       } catch (error) {
         setUploading(false);
         const errorMessage = error instanceof Error ? error.message : "Upload failed";
         setError(errorMessage);
-        toast.error(errorMessage, { id: uploadToast });
+        toast.error(errorMessage);
       }
     },
     [setError]
   );
 
-  const pollForCompletion = async (recordId: string, toastId: string | number) => {
+  const pollForCompletion = async (recordId: string) => {
     const maxAttempts = 60;
     let attempts = 0;
 
@@ -332,19 +337,19 @@ export default function Step1ProductUpload() {
 
           setImageLoaded(false); // Start loading animation
           setPreview(data.bgRemovedImageUrl);
-          toast.success("Background removed successfully!", { id: toastId });
+          toast.success("Background removed successfully!");
         } else if (attempts < maxAttempts) {
           attempts++;
           setTimeout(poll, 2000);
         } else {
           setProcessing(false);
           setError("Background removal timed out. Please try again.");
-          toast.error("Background removal timed out. Please try again.", { id: toastId });
+          toast.error("Background removal timed out. Please try again.");
         }
-      } catch (error) {
+      } catch {
         setProcessing(false);
         setError("Failed to check status. Please try again.");
-        toast.error("Failed to check status. Please try again.", { id: toastId });
+        toast.error("Failed to check status. Please try again.");
       }
     };
 
@@ -441,7 +446,7 @@ export default function Step1ProductUpload() {
                     key={image.fileId}
                     image={image}
                     isSelected={selectedScrapedImage?.fileId === image.fileId}
-                    isProcessing={processing && selectedScrapedImage?.fileId === image.fileId}
+                    isProcessing={false} // Removed processing overlay from individual cards
                     onClick={() => !processing && handleSelectScrapedImage(image)}
                   />
                 ))}
@@ -515,19 +520,6 @@ export default function Step1ProductUpload() {
                 </div>
               </div>
             )}
-
-            {/* Processing shimmer */}
-            {processing && !preview && (
-              <div className="space-y-3 sm:space-y-4">
-                <div className="max-h-48 h-48 sm:max-h-64 sm:h-64 bg-sidebar border border-border rounded-lg relative overflow-hidden mx-auto">
-                  <div className="absolute inset-0 shimmer" />
-                </div>
-                <p className="text-center text-xs sm:text-sm text-muted-foreground">
-                  Removing background...
-                </p>
-              </div>
-            )}
-
             {/* Preview image with fade-in animation */}
             {preview && (
               <div className={`space-y-4 transition-all duration-500 ${imageLoaded ? 'opacity-100 scale-100' : 'opacity-0 scale-95'
@@ -552,17 +544,36 @@ export default function Step1ProductUpload() {
         </div>
       )}
 
-      {/* Next Button */}
-      {isCompleted && (
-        <div className="flex justify-end mt-6 sm:mt-8">
+      {/* Action Buttons */}
+      <div className="flex justify-end mt-6 sm:mt-8">
+        {/* Show Remove Background button when image is selected but not completed */}
+        {activeTab === "url" && selectedScrapedImage && !isCompleted && (
+          <button
+            onClick={handleRemoveBackground}
+            disabled={processing}
+            className="px-4 sm:px-8 py-2 sm:py-3 text-sm sm:text-base bg-brand-primary hover:bg-brand-primary/90 text-white rounded-lg font-semibold hover:shadow-xl transition-all flex items-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
+          >
+            {processing ? (
+              <>
+                <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" />
+                Removing Background...
+              </>
+            ) : (
+              "Remove Background"
+            )}
+          </button>
+        )}
+
+        {/* Show Continue button only when completed */}
+        {isCompleted && (
           <button
             onClick={handleNext}
             className="px-4 sm:px-8 py-2 sm:py-3 text-sm sm:text-base bg-brand-primary hover:bg-brand-primary/90 text-white rounded-lg font-semibold hover:shadow-xl transition-all"
           >
             Continue to Choose Avatar
           </button>
-        </div>
-      )}
+        )}
+      </div>
 
 
     </div>

@@ -7,17 +7,17 @@ const TESTIMONIALS = [
     {
         name: "Noah Davis",
         avatar: "https://d1735p3aqhycef.cloudfront.net/official-website/public/avatar/0.webp",
-        quote: "TopView's AI Product Avatar has revolutionized the creation of dynamic content. It's effortless to use and has made our product showcases more engaging.",
+        quote: "ProductHold's AI Product Avatar has revolutionized the creation of dynamic content. It's effortless to use and has made our product showcases more engaging.",
     },
     {
         name: "Mason Clark",
         avatar: "https://d1735p3aqhycef.cloudfront.net/official-website/public/avatar/1.webp",
-        quote: "TopView's AI avatars provide a cost-effective and highly interactive solution that our clients love. It's a must-have tool in our strategy.",
+        quote: "ProductHold's AI avatars provide a cost-effective and highly interactive solution that our clients love. It's a must-have tool in our strategy.",
     },
     {
         name: "Elijah Walker",
         avatar: "https://d1735p3aqhycef.cloudfront.net/official-website/public/avatar/2.webp",
-        quote: "TopView has revolutionized how we present our brand's products. The AI avatars add a professional touch to our content without costly photoshoots.",
+        quote: "ProductHold has revolutionized how we present our brand's products. The AI avatars add a professional touch to our content without costly photoshoots.",
     },
     {
         name: "Mia Robinson",
@@ -27,17 +27,17 @@ const TESTIMONIALS = [
     {
         name: "Olivia Brown",
         avatar: "https://d1735p3aqhycef.cloudfront.net/official-website/public/avatar/4.webp",
-        quote: "Using TopView's AI avatars has streamlined my workflow. It's like having a virtual studio—creating professional videos has never been this straightforward.",
+        quote: "Using ProductHold's AI avatars has streamlined my workflow. It's like having a virtual studio—creating professional videos has never been this straightforward.",
     },
     {
         name: "Liam Wilson",
         avatar: "https://d1735p3aqhycef.cloudfront.net/official-website/public/avatar/7.webp",
-        quote: "TopView's AI Product Avatar has simplified our team's marketing efforts. The flexibility and efficiency it offers are unparalleled.",
+        quote: "ProductHold's AI Product Avatar has simplified our team's marketing efforts. The flexibility and efficiency it offers are unparalleled.",
     },
     {
         name: "Ethan Johnson",
         avatar: "https://d1735p3aqhycef.cloudfront.net/official-website/public/avatar/8.webp",
-        quote: "TopView enables me to generate high-quality product videos quickly and easily. The AI avatars are versatile, and the customization options are endless!",
+        quote: "ProductHold enables me to generate high-quality product videos quickly and easily. The AI avatars are versatile, and the customization options are endless!",
     },
 ];
 
@@ -56,7 +56,7 @@ export default function TestimonialsSection() {
                     <span>Trusted by Creators</span>
                 </div>
                 <h2 className="text-3xl md:text-5xl font-bold tracking-tight text-foreground mb-6">
-                    How Topview is Changing <br /> <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-primary to-purple-600">Product Showcasing</span>
+                    How ProductHold is Changing <br /> <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-primary to-purple-600">Product Showcasing</span>
                 </h2>
             </div>
 

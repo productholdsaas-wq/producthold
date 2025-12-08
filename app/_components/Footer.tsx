@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { Globe } from "lucide-react";
 
 export default function Footer() {
@@ -13,12 +14,13 @@ export default function Footer() {
                     <div className="flex flex-col gap-8 lg:w-1/3">
                         <div className="flex flex-col gap-4">
                             <div className="flex items-center gap-2">
-                                <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-brand-primary-dark to-brand-primary flex items-center justify-center text-white font-bold text-xl">
-                                    P
-                                </div>
-                                <span className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-foreground to-foreground/70">
-                                    ProductHold
-                                </span>
+                                <Image
+                                    src="/Full_logo.png"
+                                    alt="ProductHold Logo"
+                                    width={180}
+                                    height={50}
+                                    className=" object-contain"
+                                />
                             </div>
                             <p className="text-muted-foreground text-lg">
                                 Scaling your video creation with AI

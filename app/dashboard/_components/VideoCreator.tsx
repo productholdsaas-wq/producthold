@@ -23,8 +23,20 @@ function QuickNavButton({ stepNumber }: { stepNumber: 1 | 2 | 3 | 4 }) {
   );
 }
 
+import { useEffect } from "react";
+import { toast } from "sonner";
+
 function VideoCreatorContent() {
-  const { currentStep, error } = useVideoCreator();
+  const { currentStep, error, setError } = useVideoCreator();
+
+  // Show toast when global error occurs
+  useEffect(() => {
+    if (error) {
+      toast.error(error);
+      // Clear error from context after showing toast
+      setError(null);
+    }
+  }, [error, setError]);
 
   const steps = [
     { number: 1, title: "Upload Product", description: "Remove background" },
@@ -185,12 +197,6 @@ function VideoCreatorContent() {
         `}</style>
       </div>
 
-      {/* Error Display */}
-      {error && (
-        <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4">
-          <p className="text-sm text-destructive">{error}</p>
-        </div>
-      )}
 
       {/* Step Content */}
       <div className="min-h-[500px]">

@@ -61,7 +61,7 @@ export default function FAQSection() {
                     Frequently Asked Questions
                 </h2>
                 <p className="text-lg text-muted-foreground">
-                    Everything you need to know about creating product videos with TopView.
+                    Everything you need to know about creating product videos with ProductHold.
                 </p>
             </div>
 

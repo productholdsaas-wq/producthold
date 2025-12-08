@@ -7,7 +7,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
     return (
         <div className="min-h-screen w-full flex bg-background hero-glow overflow-hidden">
             {/* LEFT SIDE - BRANDING & VISUALS */}
-            <div className="hidden lg:flex w-1/2 relative flex-col justify-between p-12">
+            <div className="hidden lg:flex w-1/2 relative flex-col justify-between">
                 {/* Background Gradient/Image - Removed as main container has hero-glow */}
                 <div className="absolute inset-0 z-0 bg-gradient-to-br from-elevated/50 to-transparent" />
 
@@ -16,19 +16,16 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
                     {/* Logo */}
                     <Link href="/" className="flex items-center gap-2">
                         <Image
-                            src="/removebg-logo-white.png"
-                            alt="VidShortify Logo"
-                            width={40}
-                            height={40}
+                            src="/Full_logo.png"
+                            alt="ProductHold Logo"
+                            width={180}
+                            height={30}
                             className="object-contain"
                         />
-                        <span className="text-xl font-bold text-white tracking-wide">
-                            VidShortify
-                        </span>
                     </Link>
 
                     {/* Main Visuals & Text */}
-                    <div className="flex flex-col items-center text-center mt-5">
+                    <div className="flex flex-col items-center text-center">
                         <h1 className="text-4xl font-bold text-white mb-4 leading-tight">
                             Create AI UGC Videos in Minutes, Your Way
                         </h1>
@@ -100,10 +97,11 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
                     <div className="lg:hidden flex justify-center mb-8">
                         <Link href="/" className="flex items-center gap-2">
                             <Image
-                                src="/removebg-logo-white.png"
-                                alt="VidShortify Logo"
-                                width={32}
+                                src="/Full_logo.png"
+                                alt="ProductHold Logo"
+                                width={120}
                                 height={32}
+                                className="h-8 w-auto object-contain"
                             />
                         </Link>
                     </div>
@@ -111,15 +109,12 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
                     {/* Desktop Logo (centered at top, visible only on large screens) */}
                     <div className="hidden lg:flex items-center justify-center gap-2 mb-8">
                         <Image
-                            src="/removebg-logo-white.png"
-                            alt="VidShortify Logo"
-                            width={40}
+                            src="/Full_logo.png"
+                            alt="ProductHold Logo"
+                            width={150}
                             height={40}
-                            className="object-contain"
+                            className="object-contain h-10 w-auto"
                         />
-                        <span className="text-2xl font-bold text-white tracking-wide">
-                            VidShortify
-                        </span>
                     </div>
 
                     {children}

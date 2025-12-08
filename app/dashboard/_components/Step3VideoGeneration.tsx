@@ -290,13 +290,30 @@ export default function Step3VideoGeneration() {
   };
 
   const handleSubmit = async () => {
+    if(!script){
+      toast.error("Please write a script");
+      return;
+    }
+
     if (!voiceId) {
-      setError("Please select a voice");
+      toast.error("Please select a voice");
       return;
     }
 
     setSaving(true);
-    setError(null);
+
+    const convertVideoLength = (length: string) => {
+      switch (length) {
+        case "15-30s":
+          return 1;
+        case "30-60s":
+          return 2;
+        case "60-90s":
+          return 3;
+        default:
+          return 2;
+      }
+    };
 
     try {
       console.log("📤 Submitting video generation task...");
@@ -306,12 +323,14 @@ export default function Step3VideoGeneration() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           taskRecordId,
-          selectedImageId,
-          script,
+          replaceProductTaskImageId: selectedImageId,
+          scriptMode: "text",
+          ttsText: script,
           voiceId,
           mode,
-          captionStyleId,
-          videoOrientation,
+          captionId: captionStyleId,
+          aspectRatio: videoOrientation,
+          videoLengthType: convertVideoLength(videoLength),
         }),
       });
 
@@ -662,7 +681,7 @@ export default function Step3VideoGeneration() {
               Quality Mode
             </label>
             <div className="flex gap-3">
-              {(["standard", "pro"] as const).map((m) => (
+              {(["lite", "pro"] as const).map((m) => (
                 <button
                   key={m}
                   onClick={() => setWorkflowData({ mode: m })}
@@ -691,7 +710,7 @@ export default function Step3VideoGeneration() {
         </button>
         <button
           onClick={handleSubmit}
-          disabled={saving || !voiceId}
+          disabled={saving || !voiceId || !script}
           className="px-4 sm:px-8 py-2 sm:py-3 text-sm sm:text-base bg-brand-primary hover:bg-brand-primary/90 text-white rounded-lg font-semibold shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1 sm:gap-2"
         >
           {saving && <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" />}

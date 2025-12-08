@@ -105,7 +105,7 @@ export async function GET(req: NextRequest) {
     // Query TopView for status using axios
     const options = {
       method: "GET",
-      url: `${BASE_URL}/v2/product_avatar/task/image2Video/query`,
+      url: `${BASE_URL}/v2/product_avatar/task/image2Vdeo/query`,
       params: {
         taskId: taskRecord.videoTaskId,
         needCloudFrontUrl: "true",

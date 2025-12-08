@@ -95,12 +95,12 @@ export default function Step2TemplateSelection() {
   } = useVideoCreator();
 
   const taskRecordId = workflowData.taskRecordId!;
-  const bgRemovedImageUrl = workflowData.bgRemovedImageUrl!;
   const [selectedAvatar, setSelectedAvatar] = useState<Avatar | null>(null);
   const [processing, setProcessing] = useState(false);
   const [mode] = useState<"auto" | "manual">("auto");
   const [results, setResults] = useState<ReplaceProductResult[] | null>(null);
   const [selectedResult, setSelectedResult] = useState<ReplaceProductResult | null>(null);
+  const [manualTaskId, setManualTaskId] = useState("");
 
   // Avatar fetching states
   const [avatars, setAvatars] = useState<Avatar[]>([]);
@@ -442,7 +442,7 @@ export default function Step2TemplateSelection() {
           {/* Filters */}
           <div className="flex flex-col sm:flex-row justify-end items-start sm:items-center gap-3 sm:gap-4 mb-6">
             <div className="flex flex-wrap gap-2 overflow-x-auto pb-2 sm:pb-0">
-              
+
               <Select
                 value={loadingFilters ? "" : selectedEthnicity}
                 disabled={loadingFilters}
@@ -663,6 +663,41 @@ export default function Step2TemplateSelection() {
           }
         </button>
       </div>
+
+      {/* Manual Task Recovery Section */}
+      {/* <div className="mt-8 pt-6 border-t border-border">
+        <details className="text-sm text-muted-foreground">
+          <summary className="cursor-pointer hover:text-foreground transition-colors font-medium">
+            Trouble with generation? check status
+          </summary>
+          <div className="mt-4 p-4 bg-sidebar/50 rounded-lg border border-border">
+            <p className="mb-3 text-xs sm:text-sm">
+              If your task was interrupted (e.g., power loss), enter the Task ID below to recover the results.
+            </p>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={manualTaskId}
+                onChange={(e) => setManualTaskId(e.target.value)}
+                placeholder="Enter Task ID (e.g., 90b2ac1b...)"
+                className="flex-1 px-3 py-2 text-sm bg-sidebar border border-border rounded-lg focus:border-brand-primary focus:outline-none"
+              />
+              <button
+                onClick={() => {
+                  if (manualTaskId.trim()) {
+                    setProcessing(true);
+                    pollForResults(manualTaskId.trim());
+                  }
+                }}
+                disabled={processing || !manualTaskId.trim()}
+                className="px-4 py-2 text-sm bg-sidebar-accent border border-border rounded-lg hover:bg-sidebar-accent/80 hover:text-foreground transition disabled:opacity-50"
+              >
+                Check Status
+              </button>
+            </div>
+          </div>
+        </details>
+      </div> */}
 
       <style>{`
         .fade-slide {
