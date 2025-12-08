@@ -8,6 +8,14 @@ import { UserButton, SignedIn, SignedOut } from "@clerk/nextjs";
 export default function Header() {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
+    const scrollToSection = (id: string) => {
+        const element = document.getElementById(id);
+        if (element) {
+            element.scrollIntoView({ behavior: "smooth" });
+        }
+        setIsMobileMenuOpen(false);
+    };
+
     return (
         <header className="fixed top-0 left-0 right-0 z-50 border-b border-border/10 bg-transparent backdrop-blur-md">
             <nav className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6 lg:px-8">
@@ -25,15 +33,15 @@ export default function Header() {
 
                 {/* Center: Desktop Navigation */}
                 <div className="hidden lg:flex lg:gap-x-8">
-                    <Link href="#" className="text-sm font-semibold leading-6 text-foreground/80 hover:text-foreground transition-colors">
+                    <button onClick={() => scrollToSection("use-cases")} className="text-sm font-semibold leading-6 text-foreground/80 hover:text-foreground transition-colors">
                         Use cases
-                    </Link>
-                    <Link href="#" className="text-sm font-semibold leading-6 text-foreground/80 hover:text-foreground transition-colors">
+                    </button>
+                    <button onClick={() => scrollToSection("how-it-works")} className="text-sm font-semibold leading-6 text-foreground/80 hover:text-foreground transition-colors">
                         How it works
-                    </Link>
-                    <Link href="/pricing" className="text-sm font-semibold leading-6 text-foreground/80 hover:text-foreground transition-colors">
+                    </button>
+                    <button onClick={() => scrollToSection("pricing")} className="text-sm font-semibold leading-6 text-foreground/80 hover:text-foreground transition-colors">
                         Pricing
-                    </Link>
+                    </button>
                 </div>
 
                 {/* Right: Actions */}
@@ -80,17 +88,17 @@ export default function Header() {
             {/* Mobile Menu */}
             <div
                 className={`lg:hidden absolute top-16 left-0 right-0 mx-6 rounded-2xl border border-border/10 p-6 shadow-2xl bg-elevated/95 backdrop-blur-lg transition-all duration-300 ease-in-out origin-top ${isMobileMenuOpen
-                        ? "opacity-100 translate-y-0 scale-100 pointer-events-auto"
-                        : "opacity-0 -translate-y-4 scale-95 pointer-events-none"
+                    ? "opacity-100 translate-y-0 scale-100 pointer-events-auto"
+                    : "opacity-0 -translate-y-4 scale-95 pointer-events-none"
                     }`}
             >
                 <div className="space-y-4">
-                    <Link href="#" className="block text-base font-semibold leading-7 text-foreground hover:bg-white/5 p-2 rounded-lg transition-colors">
+                    <button onClick={() => scrollToSection("use-cases")} className="block w-full text-left text-base font-semibold leading-7 text-foreground hover:bg-white/5 p-2 rounded-lg transition-colors">
                         Use cases
-                    </Link>
-                    <Link href="#" className="block text-base font-semibold leading-7 text-foreground hover:bg-white/5 p-2 rounded-lg transition-colors">
+                    </button>
+                    <button onClick={() => scrollToSection("how-it-works")} className="block w-full text-left text-base font-semibold leading-7 text-foreground hover:bg-white/5 p-2 rounded-lg transition-colors">
                         How it works
-                    </Link>
+                    </button>
                     <Link href="/pricing" className="block text-base font-semibold leading-7 text-foreground hover:bg-white/5 p-2 rounded-lg transition-colors">
                         Pricing
                     </Link>

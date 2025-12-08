@@ -3,6 +3,7 @@ import HeroSection from "./_components/HeroSection";
 import ShowcaseSection from "./_components/ShowcaseSection";
 import AnySizeSection from "./_components/AnySizeSection";
 import FeaturesSection from "./_components/FeaturesSection";
+import UseCasesSection from "./_components/UseCasesSection";
 import HowItWorksSection from "./_components/HowItWorksSection";
 import KeyFeaturesSection from "./_components/KeyFeaturesSection";
 import TestimonialsSection from "./_components/TestimonialsSection";
@@ -20,6 +21,7 @@ export default function Home() {
         <ShowcaseSection />
         <AnySizeSection />
         <FeaturesSection />
+        <UseCasesSection />
         <HowItWorksSection />
         <KeyFeaturesSection />
         <TestimonialsSection />
