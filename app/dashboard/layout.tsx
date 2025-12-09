@@ -1,7 +1,7 @@
 "use client";
 
 import { UserButton } from "@clerk/nextjs";
-import { LayoutDashboard, Video, CreditCard, Settings, Sparkles, Menu, X } from "lucide-react";
+import { LayoutDashboard, Video, CreditCard, Settings, Sparkles, Menu, X, ShieldPlus } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ReactNode, useState } from "react";
@@ -10,8 +10,8 @@ const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { name: "Create Video", href: "/dashboard/create", icon: Video },
   { name: "My Videos", href: "/dashboard/videos", icon: Sparkles },
+  { name: "Pricing", href: "/dashboard/pricing", icon: ShieldPlus },
   { name: "Billing", href: "/dashboard/billing", icon: CreditCard },
-  { name: "Settings", href: "/dashboard/settings", icon: Settings },
 ];
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
