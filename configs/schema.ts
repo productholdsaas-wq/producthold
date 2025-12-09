@@ -63,54 +63,25 @@ export const TopviewTasks = pgTable("topview_tasks", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-// TopView AI Avatars - stores reusable avatars created from successful videos
-export const TopviewAvatars = pgTable("topview_avatars", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  userId: varchar("user_id").notNull(),
-  
-  // Avatar metadata from TopView API
-  aiavatarId: varchar("aiavatar_id").notNull().unique(),
-  aiavatarName: varchar("aiavatar_name").notNull(),
-  gender: varchar("gender"),
-  coverUrl: varchar("cover_url"),
-  previewVideoUrl: varchar("preview_video_url"),
-  ethnicities: varchar("ethnicities"),
-  voiceoverIdDefault: varchar("voiceover_id_default"),
-  faceSquareConfig: json("face_square_config"),
-  
-  createdAt: timestamp("created_at").defaultNow(),
-});
-
 // Updated TopView Video table with user tracking
 export const TopviewVideo = pgTable("topview_videos", {
   id: uuid("id").primaryKey().defaultRandom(),
   userId: varchar("user_id").notNull(), // Clerk user ID
-  taskTableId: uuid("task_table_id"), // Reference to TopviewTasks
-  
-  avatarId: varchar("avatar_id"),
-  avatarMeta: json("avatar_meta"),
-  productUrl: varchar("product_url"),
+  taskTableId: uuid("task_table_id"), 
+  aiavatarId: varchar("aiavatar_id"),
+  aiavatarName: varchar("aiavatar_name"),
+  gender: varchar("gender"),
+  coverUrl: varchar("cover_url"),
+  ethnicities: varchar("ethnicities"),
+  voiceoverIdDefault: varchar("voiceover_id_default"),
   productName: varchar("product_name"),
-  productImageUrl: varchar("product_image_url"),
-  
-  fileIds: json("file_ids"),
-  script: varchar("script", { length: 5000 }),
-  voiceId: varchar("voice_id"),
-  language: varchar("language", { length: 50 }),
-  captionStyleId: varchar("caption_style_id"),
-  aspectRatio: varchar("aspect_ratio"),
   videoLength: varchar("video_length"),
-  
   taskId: varchar("task_id"), // Final video generation task ID
   status: varchar("status").default("pending"),
   videoUrl: varchar("video_url"),
   videoCoverUrl: varchar("video_cover_url"),
   duration: varchar("duration"),
-  
-  creditsCost: integer("credits_cost").default(1),
-  creditsDeducted: boolean("credits_deducted").default(false),
-  
-  createdBy: varchar("created_by").notNull(), // Deprecated, use userId
+  createdBy: varchar("created_by").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

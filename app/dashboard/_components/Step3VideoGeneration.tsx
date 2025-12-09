@@ -290,7 +290,7 @@ export default function Step3VideoGeneration() {
   };
 
   const handleSubmit = async () => {
-    if(!script){
+    if (!script) {
       toast.error("Please write a script");
       return;
     }
@@ -331,6 +331,9 @@ export default function Step3VideoGeneration() {
           captionId: captionStyleId,
           aspectRatio: videoOrientation,
           videoLengthType: convertVideoLength(videoLength),
+          productName: workflowData.productName,
+          productUrl: workflowData.productUrl,
+          productImageUrl: workflowData.selectedImageUrl || workflowData.bgRemovedImageUrl,
         }),
       });
 

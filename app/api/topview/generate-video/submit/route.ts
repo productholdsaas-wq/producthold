@@ -40,6 +40,9 @@ export async function POST(req: NextRequest) {
       mode = "pro",
       aspectRatio = "9:16",
       videoLengthType = 2,
+      productName,
+      productUrl,
+      productImageUrl,
     } = body;
 
     // Map the new payload key to the internal variable used for DB operations
@@ -222,13 +225,10 @@ export async function POST(req: NextRequest) {
       .values({
         userId,
         taskTableId: taskRecordId,
-        script: ttsText,
-        voiceId,
-        captionStyleId,
         taskId: result.taskId,
         status: "processing",
         createdBy: userId,
-        creditsDeducted: false,
+        productName,
       })
       .returning();
 

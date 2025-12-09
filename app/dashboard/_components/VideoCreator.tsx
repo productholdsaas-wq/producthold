@@ -146,7 +146,7 @@ function VideoCreatorContent() {
         </div>
 
         {/* ✅ Quick Navigation */}
-        <div className="mt-6 pt-6 border-t border-border/50">
+        {/* <div className="mt-6 pt-6 border-t border-border/50">
           <p className="text-xs text-muted-foreground/80 mb-3 text-center">
             Quick Navigation (Testing Only)
           </p>
@@ -158,7 +158,7 @@ function VideoCreatorContent() {
               />
             ))}
           </div>
-        </div>
+        </div> */}
 
         {/* Animations */}
         <style jsx>{`

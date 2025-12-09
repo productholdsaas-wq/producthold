@@ -3,7 +3,7 @@ export const runtime = "nodejs";
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
-import { TopviewTasks, TopviewVideo, TopviewAvatars, Users } from "@/configs/schema";
+import { TopviewTasks, TopviewVideo, Users } from "@/configs/schema";
 import { eq } from "drizzle-orm";
 import { sql } from "drizzle-orm";
 import axios, { AxiosError } from "axios";
@@ -78,22 +78,20 @@ export async function GET(req: NextRequest) {
         .limit(1);
     }
 
-    if (!taskRecord) {
-      return NextResponse.json({ error: "Task not found" }, { status: 404 });
-    }
-
-    if (taskRecord.userId !== userId) {
+    if (taskRecord && taskRecord.userId !== userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
 
-    if (!taskRecord.videoTaskId) {
+    const targetVideoTaskId = taskRecord?.videoTaskId || taskId;
+
+    if (!targetVideoTaskId) {
       return NextResponse.json(
-        { error: "Video generation not started" },
+        { error: "Video generation not started or Task ID missing" },
         { status: 400 }
       );
     }
 
-    console.log("🔍 Querying video generation status...");
+    console.log("🔍 Querying video generation status for:", targetVideoTaskId);
 
     if (!TOPVIEW_API_KEY || !TOPVIEW_UID) {
       return NextResponse.json(
@@ -105,9 +103,9 @@ export async function GET(req: NextRequest) {
     // Query TopView for status using axios
     const options = {
       method: "GET",
-      url: `${BASE_URL}/v2/product_avatar/task/image2Vdeo/query`,
+      url: `${BASE_URL}/v2/product_avatar/task/image2Video/query`,
       params: {
-        taskId: taskRecord.videoTaskId,
+        taskId: targetVideoTaskId,
         needCloudFrontUrl: "true",
       },
       headers: {
@@ -137,10 +135,8 @@ export async function GET(req: NextRequest) {
         aiavatarName: string;
         gender: string | null;
         coverUrl: string;
-        previewVideoUrl: string;
         ethnicities: string | null;
         voiceoverIdDefault: string;
-        faceSquareConfig: unknown;
       };
     };
 
@@ -148,18 +144,23 @@ export async function GET(req: NextRequest) {
 
     // If completed successfully, update database and deduct credits
     if (result.status === "success" && result.finishedVideoUrl) {
-      // Check if credits already deducted
-      if (videoRecord && !videoRecord.creditsDeducted) {
-        // Get user by Clerk ID from email (or better, add clerk_id to Users table)
-        const [user] = await db
-          .select()
-          .from(Users)
-          .where(eq(Users.email, userId))
-          .limit(1);
+      // NOTE: creditsDeducted column removed. Assuming status check is sufficient or credits logic handled elsewhere.
+      
+      // Get user by Clerk ID from email (or better, add clerk_id to Users table)
+      const [user] = await db
+        .select()
+        .from(Users)
+        .where(eq(Users.email, userId))
+        .limit(1);
 
-        if (user) {
-          // Deduct 1 credit
-          await db
+      if (user) {
+        // Deduct 1 credit
+        // Only deduct if we can ensure we haven't already (limited by lack of creditsDeducted flag)
+        // For now, deducting if status was not already 'completed' in DB
+        const alreadyCompleted = videoRecord?.status === "completed";
+        
+        if (!alreadyCompleted) {
+           await db
             .update(Users)
             .set({
               credits_used: sql`${Users.credits_used} + 1`,
@@ -167,56 +168,36 @@ export async function GET(req: NextRequest) {
             })
             .where(eq(Users.id, user.id));
         }
+      }
 
-        // Mark credits as deducted in video record
-        if (videoRecord) {
-          await db
-            .update(TopviewVideo)
-            .set({
-              status: "completed",
-              videoUrl: result.finishedVideoUrl,
-              avatarMeta: result.aiAvatar ? JSON.parse(JSON.stringify(result.aiAvatar)) : null,
-              creditsDeducted: true,
-              updatedAt: new Date(),
-            })
-            .where(eq(TopviewVideo.id, videoRecord.id));
-        }
+      // Update video record
+      if (videoRecord) {
+        await db
+          .update(TopviewVideo)
+          .set({
+            status: "completed",
+            videoUrl: result.finishedVideoUrl,
+            updatedAt: new Date(),
+            aiavatarId: result.aiAvatar?.aiavatarId,
+            aiavatarName: result.aiAvatar?.aiavatarName,
+            gender: result.aiAvatar?.gender,
+            coverUrl: result.aiAvatar?.coverUrl,
+            ethnicities: result.aiAvatar?.ethnicities,
+            voiceoverIdDefault: result.aiAvatar?.voiceoverIdDefault,
+          })
+          .where(eq(TopviewVideo.id, videoRecord.id));
       }
 
       // Update task record
-      await db
-        .update(TopviewTasks)
-        .set({
-          finishedVideoUrl: result.finishedVideoUrl,
-          status: "completed",
-          updatedAt: new Date(),
-        })
-        .where(eq(TopviewTasks.id, taskRecord.id));
-
-      // Save AI Avatar for reuse if available
-      if (result.aiAvatar) {
-        // Check if avatar already exists
-        const [existingAvatar] = await db
-          .select()
-          .from(TopviewAvatars)
-          .where(eq(TopviewAvatars.aiavatarId, result.aiAvatar.aiavatarId))
-          .limit(1);
-
-        if (!existingAvatar) {
-          await db.insert(TopviewAvatars).values({
-            userId,
-            aiavatarId: result.aiAvatar.aiavatarId,
-            aiavatarName: result.aiAvatar.aiavatarName,
-            gender: result.aiAvatar.gender,
-            coverUrl: result.aiAvatar.coverUrl,
-            previewVideoUrl: result.aiAvatar.previewVideoUrl,
-            ethnicities: result.aiAvatar.ethnicities,
-            voiceoverIdDefault: result.aiAvatar.voiceoverIdDefault,
-            faceSquareConfig: result.aiAvatar.faceSquareConfig
-              ? JSON.parse(JSON.stringify(result.aiAvatar.faceSquareConfig))
-              : null,
-          });
-        }
+      if (taskRecord) {
+        await db
+          .update(TopviewTasks)
+          .set({
+            finishedVideoUrl: result.finishedVideoUrl,
+            status: "completed",
+            updatedAt: new Date(),
+          })
+          .where(eq(TopviewTasks.id, taskRecord.id));
       }
     }
 
@@ -226,7 +207,7 @@ export async function GET(req: NextRequest) {
       status: result.status,
       finishedVideoUrl: result.finishedVideoUrl,
       aiAvatar: result.aiAvatar,
-      creditsDeducted: videoRecord?.creditsDeducted || false,
+      creditsDeducted: false, 
     });
   } catch (error: unknown) {
     const axiosError = error as AxiosError;
