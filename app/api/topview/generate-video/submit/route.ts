@@ -41,8 +41,6 @@ export async function POST(req: NextRequest) {
       aspectRatio = "9:16",
       videoLengthType = 2,
       productName,
-      productUrl,
-      productImageUrl,
     } = body;
 
     // Map the new payload key to the internal variable used for DB operations
@@ -223,11 +221,10 @@ export async function POST(req: NextRequest) {
     const [videoRecord] = await db
       .insert(TopviewVideo)
       .values({
-        userId,
         taskTableId: taskRecordId,
         taskId: result.taskId,
         status: "processing",
-        createdBy: userId,
+        createdBy: userEmail,
         productName,
       })
       .returning();

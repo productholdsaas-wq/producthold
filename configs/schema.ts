@@ -66,16 +66,11 @@ export const TopviewTasks = pgTable("topview_tasks", {
 // Updated TopView Video table with user tracking
 export const TopviewVideo = pgTable("topview_videos", {
   id: uuid("id").primaryKey().defaultRandom(),
-  userId: varchar("user_id").notNull(), // Clerk user ID
   taskTableId: uuid("task_table_id"), 
   aiavatarId: varchar("aiavatar_id"),
   aiavatarName: varchar("aiavatar_name"),
   gender: varchar("gender"),
-  coverUrl: varchar("cover_url"),
-  ethnicities: varchar("ethnicities"),
-  voiceoverIdDefault: varchar("voiceover_id_default"),
   productName: varchar("product_name"),
-  videoLength: varchar("video_length"),
   taskId: varchar("task_id"), // Final video generation task ID
   status: varchar("status").default("pending"),
   videoUrl: varchar("video_url"),

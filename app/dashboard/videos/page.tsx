@@ -1,17 +1,18 @@
-import { auth } from "@clerk/nextjs/server";
+import { currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { getUserVideos } from "@/app/actions/get-user-videos";
 import { Video, Calendar, Download, ExternalLink, RefreshCw } from "lucide-react";
 import Link from "next/link";
 
 export default async function MyVideosPage() {
-    const { userId } = await auth();
+    const user = await currentUser();
+    const email = user?.emailAddresses[0]?.emailAddress;
 
-    if (!userId) {
+    if (!email) {
         redirect("/sign-in");
     }
 
-    const videos = await getUserVideos(userId);
+    const videos = await getUserVideos(email);
 
     return (
         <div className="space-y-6">
@@ -113,10 +114,6 @@ export default async function MyVideosPage() {
                                     <div className="flex flex-col">
                                         <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Duration</span>
                                         <span className="text-xs font-medium text-foreground">{video.duration || "--:--"}</span>
-                                    </div>
-                                    <div className="flex flex-col">
-                                        <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Format</span>
-                                        <span className="text-xs font-medium text-foreground">{video.aspectRatio || "9:16"}</span>
                                     </div>
                                 </div>
 

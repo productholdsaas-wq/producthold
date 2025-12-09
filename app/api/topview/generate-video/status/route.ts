@@ -134,9 +134,6 @@ export async function GET(req: NextRequest) {
         aiavatarId: string;
         aiavatarName: string;
         gender: string | null;
-        coverUrl: string;
-        ethnicities: string | null;
-        voiceoverIdDefault: string;
       };
     };
 
@@ -180,10 +177,7 @@ export async function GET(req: NextRequest) {
             updatedAt: new Date(),
             aiavatarId: result.aiAvatar?.aiavatarId,
             aiavatarName: result.aiAvatar?.aiavatarName,
-            gender: result.aiAvatar?.gender,
-            coverUrl: result.aiAvatar?.coverUrl,
-            ethnicities: result.aiAvatar?.ethnicities,
-            voiceoverIdDefault: result.aiAvatar?.voiceoverIdDefault,
+            gender: result.aiAvatar?.gender
           })
           .where(eq(TopviewVideo.id, videoRecord.id));
       }
